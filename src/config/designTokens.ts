@@ -26,6 +26,7 @@ export interface ImageTokens {
 }
 
 export interface WeddingConfig {
+  onboardingComplete: boolean;
   coupleNames: string;
   monogram: string;
   weddingDate: string;
@@ -272,6 +273,7 @@ export function generateMonogram(names: string): string {
 
 export function getDefaultConfig(): WeddingConfig {
   return {
+    onboardingComplete: false,
     coupleNames: "Kendra & Diego",
     monogram: "K D",
     weddingDate: "2026-09-11",

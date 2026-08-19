@@ -1,12 +1,12 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { STORAGE_KEY } from "../config/designTokens";
 
-function hasSavedConfig(): boolean {
+function isOnboardingDone(): boolean {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return false;
     const parsed = JSON.parse(saved);
-    return !!parsed.coupleNames && parsed.coupleNames !== "";
+    return parsed.onboardingComplete === true;
   } catch {
     return false;
   }
@@ -19,7 +19,7 @@ export default function RequireOnboarding({ children }: { children: React.ReactN
     return <>{children}</>;
   }
 
-  if (!hasSavedConfig()) {
+  if (!isOnboardingDone()) {
     return <Navigate to="/onboard" replace />;
   }
 
