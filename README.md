@@ -1,15 +1,15 @@
-# Kendra & Diego Wedding PWA
+# Wedding Photo Sharing and Live Feed
 
 A zero-cost, offline-first progressive web app that lets wedding guests capture Polaroid-style photos and leave voice guestbook messages — all syncing live to a reception projection wall.
 
 ## Features
 
-- **Polaroid Camera** — WebRTC viewfinder with client-side frame stamping (KD monogram, gold border, phase badge)
-- **Voice Guestbook** — Web Speech API real-time transcription + MediaRecorder audio capture (no API keys needed)
-- **Offline Queue** — IndexedDB-backed upload engine with exponential backoff retry; zero lost photos
-- **Live Reception Wall** — Ken Burns slideshow with calligraphy voice toast overlay, 10-second polling
-- **QR Table Cards** — 300 DPI printable generator matching the floral invitation suite
-- **Auto Phase Sorting** — Photos organize into Drive folders by ceremony timeline (Pre-Ceremony, Ceremony, Cocktail Hour, Reception)
+- **Polaroid Camera**: WebRTC viewfinder with client-side frame stamping (KD monogram, gold border, phase badge)
+- **Voice Guestbook**: Web Speech API real-time transcription + MediaRecorder audio capture (no API keys needed)
+- **Offline Queue**: IndexedDB-backed upload engine with exponential backoff retry; zero lost photos
+- **Live Reception Wall**: Ken Burns slideshow with calligraphy voice toast overlay, 10-second polling
+- **QR Table Cards**: 300 DPI printable generator matching the floral invitation suite
+- **Auto Phase Sorting**: Photos organize into Drive folders by ceremony timeline (Pre-Ceremony, Ceremony, Cocktail Hour, Reception)
 
 ## Tech Stack
 
