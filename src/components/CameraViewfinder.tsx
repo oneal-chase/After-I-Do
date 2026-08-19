@@ -10,18 +10,32 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [preview, setPreview] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Attach stream to video element whenever streamRef changes
+  useEffect(() => {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (video && stream) {
+      video.srcObject = stream;
+      video.play().then(() => setCameraReady(true)).catch(() => {});
+    }
+  }, [cameraReady]);
+
   const startCamera = useCallback(async (facingMode: "environment" | "user") => {
     try {
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop());
+      // Stop previous stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
+      setCameraReady(false);
+
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode,
@@ -29,24 +43,29 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
           height: { ideal: 1080 },
         },
       });
-      setStream(newStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = newStream;
-        await videoRef.current.play();
+      streamRef.current = newStream;
+
+      // Attach to video if ref is ready
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = newStream;
+        await video.play();
         setCameraReady(true);
       }
     } catch {
       setError("Camera access denied. Please allow camera permission or use the upload button.");
     }
-  }, [stream]);
+  }, []);
 
   useEffect(() => {
     startCamera(facing);
     return () => {
-      stream?.getTracks().forEach((t) => t.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facing]);
+  }, [facing, startCamera]);
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
@@ -58,10 +77,8 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
     const ctx = canvas.getContext("2d")!;
     ctx.drawImage(video, 0, 0);
 
-    // Haptic
     if (navigator.vibrate) navigator.vibrate(50);
 
-    // Flash effect
     setFlash(true);
     setTimeout(() => setFlash(false), 200);
 
@@ -122,7 +139,6 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
 
   return (
     <div className="relative w-full h-full bg-black overflow-hidden">
-      {/* Video feed */}
       {!preview && (
         <>
           <video
@@ -134,10 +150,8 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
           />
           <canvas ref={canvasRef} className="hidden" />
 
-          {/* Flash overlay */}
           {flash && <div className="absolute inset-0 bg-white z-30 animate-pulse" />}
 
-          {/* Top bar */}
           <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-mauve/25 backdrop-blur-sm">
               <Volume2 className="w-3.5 h-3.5 text-mauve" />
@@ -151,7 +165,6 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
             </button>
           </div>
 
-          {/* Bottom controls */}
           <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center gap-6 p-6 pb-10 bg-gradient-to-t from-black/60 to-transparent">
             <label className="cursor-pointer p-3 rounded-full bg-white/15 backdrop-blur-sm text-white hover:bg-white/25 transition-colors">
               <Camera className="w-6 h-6" />
@@ -176,7 +189,6 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
         </>
       )}
 
-      {/* Preview overlay */}
       {preview && (
         <div className="absolute inset-0 z-40 bg-navy flex flex-col">
           <div className="flex-1 flex items-center justify-center p-4">

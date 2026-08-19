@@ -83,14 +83,15 @@ export default function WelcomeStep() {
       </div>
 
       <div>
-        <label className="block font-body text-xs font-medium text-navy mb-1.5">GAS Webhook URL</label>
+        <label className="block font-body text-xs font-medium text-navy mb-1.5">Photo Sync Link</label>
         <input
           type="url"
           value={config.gasEndpoint}
           onChange={(e) => updateConfig({ gasEndpoint: e.target.value })}
-          placeholder="https://script.google.com/macros/s/.../exec"
+          placeholder="Paste your sync link here (from the setup guide)"
           className="w-full px-4 py-3 rounded-xl border border-parchment bg-cream/50 font-body text-sm text-navy focus:outline-none focus:border-gold transition-colors"
         />
+        <p className="font-body text-[10px] text-parchment mt-1">Optional — connect to Google Drive for live photo syncing</p>
       </div>
     </div>
   );

@@ -9,6 +9,8 @@ export default function HomePage() {
   const phase = getCurrentPhase();
   const displayName = getPhaseDisplayName(phase);
 
+  const hasCustomMonogram = !!config.images.monogram;
+
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6 py-12 bg-cream">
       <SyncHUD />
@@ -17,7 +19,15 @@ export default function HomePage() {
       <div className="w-16 h-px bg-gold/50 mb-6" />
 
       {/* Monogram */}
-      <div className="font-display text-5xl text-gold tracking-widest mb-2">{config.monogram}</div>
+      {hasCustomMonogram ? (
+        <img
+          src={config.images.monogram}
+          alt="Monogram"
+          className="h-16 w-16 object-contain mb-2"
+        />
+      ) : (
+        <div className="font-display text-5xl text-gold tracking-widest mb-2">{config.monogram}</div>
+      )}
 
       {/* Names */}
       <h1 className="font-script text-4xl text-navy mb-1">{config.coupleNames}</h1>

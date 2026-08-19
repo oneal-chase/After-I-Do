@@ -6,6 +6,16 @@ import { useDesignSystem } from "../context/DesignSystemContext";
 
 const PRODUCTION_URL = "https://kendraanddiego.me";
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
 function getFontStack(name: string): string {
   const map: Record<string, string> = {
     "Pinyon Script": '"Pinyon Script", "Great Vibes", cursive',
@@ -75,10 +85,22 @@ export default function QRPage() {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    // Couple names
-    ctx.font = `${Math.round(cardW * 0.085)}px ${getFontStack(f.script)}`;
-    ctx.fillStyle = c.navy;
-    ctx.fillText(config.coupleNames, cardW / 2, cardH * 0.12);
+    // Monogram or couple names
+    if (config.images.monogram) {
+      try {
+        const monoImg = await loadImage(config.images.monogram);
+        const monoSize = cardW * 0.12;
+        ctx.drawImage(monoImg, cardW / 2 - monoSize / 2, cardH * 0.04, monoSize, monoSize);
+      } catch {
+        ctx.font = `${Math.round(cardW * 0.085)}px ${getFontStack(f.script)}`;
+        ctx.fillStyle = c.navy;
+        ctx.fillText(config.monogram || config.coupleNames, cardW / 2, cardH * 0.12);
+      }
+    } else {
+      ctx.font = `${Math.round(cardW * 0.085)}px ${getFontStack(f.script)}`;
+      ctx.fillStyle = c.navy;
+      ctx.fillText(config.coupleNames, cardW / 2, cardH * 0.12);
+    }
 
     // Decorative line
     const lineY = cardH * 0.17;

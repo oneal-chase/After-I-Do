@@ -18,7 +18,7 @@ export default function PreviewStep() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `wedding-config-${config.coupleNames.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}.json`;
+    link.download = `wedding-settings-${config.coupleNames.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   }, [config]);
@@ -26,7 +26,7 @@ export default function PreviewStep() {
   const importConfig = useCallback(() => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "application/json";
+    input.accept = ".txt,.json";
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
@@ -37,7 +37,7 @@ export default function PreviewStep() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
         window.location.reload();
       } catch {
-        alert("Invalid config file");
+        alert("Could not read that file. Please make sure it was exported from this app.");
       } finally {
         setImporting(false);
       }
@@ -46,7 +46,7 @@ export default function PreviewStep() {
   }, []);
 
   const handleReset = useCallback(() => {
-    if (confirm("Reset all customization to defaults?")) {
+    if (confirm("Reset everything back to the original wedding design?")) {
       resetConfig();
     }
   }, [resetConfig]);
@@ -55,14 +55,18 @@ export default function PreviewStep() {
     <div className="max-w-sm mx-auto space-y-6">
       <div className="text-center">
         <h3 className="font-display text-lg text-navy mb-1">Your Wedding Setup</h3>
-        <p className="font-body text-xs text-floral-slate">Review and save your configuration</p>
+        <p className="font-body text-xs text-floral-slate">Review and save your design</p>
       </div>
 
       {/* Summary card */}
       <div className="p-5 rounded-xl border border-parchment bg-cream/50 space-y-4">
         {/* Preview header */}
         <div className="text-center pb-4 border-b border-parchment">
-          <div className="font-display text-2xl text-gold tracking-widest mb-1">{config.monogram}</div>
+          {config.images.monogram ? (
+            <img src={config.images.monogram} alt="Monogram" className="h-12 w-12 object-contain mx-auto mb-1" />
+          ) : (
+            <div className="font-display text-2xl text-gold tracking-widest mb-1">{config.monogram}</div>
+          )}
           <p className="font-script text-xl text-navy">{config.coupleNames}</p>
           <p className="font-body text-xs text-floral-slate mt-1">{dateStr}</p>
           <p className="font-body text-[10px] text-parchment">{config.venue}</p>
@@ -86,7 +90,7 @@ export default function PreviewStep() {
           <p className="font-body text-[10px] text-parchment mb-1">Fonts</p>
           <div className="space-y-0.5">
             <p className="font-body text-xs text-navy">Script: <span className="text-floral-slate">{config.fonts.script}</span></p>
-            <p className="font-body text-xs text-navy">Display: <span className="text-floral-slate">{config.fonts.display}</span></p>
+            <p className="font-body text-xs text-navy">Headings: <span className="text-floral-slate">{config.fonts.display}</span></p>
             <p className="font-body text-xs text-navy">Body: <span className="text-floral-slate">{config.fonts.body}</span></p>
           </div>
         </div>
@@ -95,7 +99,7 @@ export default function PreviewStep() {
         <div>
           <p className="font-body text-[10px] text-parchment mb-1">Images</p>
           <p className="font-body text-xs text-navy">
-            Monogram: <span className="text-floral-slate">{config.images.monogram ? "Custom uploaded" : "Auto-generated"}</span>
+            Monogram: <span className="text-floral-slate">{config.images.monogram ? "Custom uploaded" : "Auto-generated from names"}</span>
           </p>
           <p className="font-body text-xs text-navy">
             Background: <span className="text-floral-slate">{config.images.background ? "Custom uploaded" : "Solid color"}</span>
@@ -104,7 +108,7 @@ export default function PreviewStep() {
 
         {/* Timeline */}
         <div>
-          <p className="font-body text-[10px] text-parchment mb-1">Timeline</p>
+          <p className="font-body text-[10px] text-parchment mb-1">Schedule</p>
           {config.timeline.map((phase) => (
             <p key={phase.id} className="font-body text-xs text-navy">
               {phase.name}: <span className="text-floral-slate">{phase.start} – {phase.end}</span>
@@ -120,7 +124,7 @@ export default function PreviewStep() {
           className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-navy text-cream font-body text-sm font-semibold hover:bg-navy/90 transition-colors"
         >
           <Download className="w-4 h-4" />
-          Download Config JSON
+          Save Settings to File
         </button>
 
         <button
@@ -129,7 +133,7 @@ export default function PreviewStep() {
           className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl border-2 border-navy/15 text-navy font-body text-sm font-semibold hover:bg-navy/5 transition-colors disabled:opacity-50"
         >
           <Upload className="w-4 h-4" />
-          {importing ? "Importing…" : "Import Config JSON"}
+          {importing ? "Loading…" : "Load Settings from File"}
         </button>
 
         <button
@@ -137,13 +141,13 @@ export default function PreviewStep() {
           className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl border border-parchment text-floral-slate font-body text-sm hover:bg-parchment/30 transition-colors"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          Reset to Defaults
+          Start Over with Defaults
         </button>
       </div>
 
       <p className="font-body text-[10px] text-parchment text-center">
-        Your config is saved automatically in this browser.
-        Export it as a JSON backup to restore on another device.
+        Your design is saved automatically in this browser.
+        Export it as a backup file to restore your settings on another device.
       </p>
     </div>
   );
