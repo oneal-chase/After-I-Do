@@ -9,10 +9,26 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
+    <script>
+      (function() {
+        try {
+          var saved = JSON.parse(localStorage.getItem('wedding-config') || '{}');
+          var c = saved.colors || {};
+          var r = document.documentElement.style;
+          if (c.cream) r.setProperty('--color-cream', c.cream);
+          if (c.navy) r.setProperty('--color-navy', c.navy);
+          if (c.floralSlate) r.setProperty('--color-floral-slate', c.floralSlate);
+          if (c.mauve) r.setProperty('--color-mauve', c.mauve);
+          if (c.gold) r.setProperty('--color-gold', c.gold);
+          if (c.parchment) r.setProperty('--color-parchment', c.parchment);
+          if (c.navy) document.querySelector('meta[name="theme-color"]').content = c.navy;
+          if (saved.coupleNames) document.title = saved.coupleNames + ' — Wedding';
+        } catch(e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Inter:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&family=Pinyon+Script&display=swap" rel="stylesheet" />
-    <title>Kendra & Diego — Wedding</title>
+    <link id="google-fonts" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Inter:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&family=Pinyon+Script&display=swap" rel="stylesheet" />
   </head>
   <body class="bg-cream">
     <div id="root"></div>

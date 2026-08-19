@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { QrCode } from "lucide-react";
 import { Link } from "react-router-dom";
-import { WEDDING_CONFIG } from "../config/wedding.config";
+import { useDesignSystem } from "../context/DesignSystemContext";
 
 interface FeedItem {
   timestamp: string;
@@ -13,6 +13,7 @@ interface FeedItem {
 }
 
 export default function LiveWall() {
+  const { config } = useDesignSystem();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
@@ -20,7 +21,7 @@ export default function LiveWall() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchFeed = useCallback(async () => {
-    const endpoint = WEDDING_CONFIG.gasEndpoint;
+    const endpoint = config.gasEndpoint;
     if (!endpoint) return;
     try {
       const resp = await fetch(endpoint);
@@ -31,7 +32,7 @@ export default function LiveWall() {
     } catch (err) {
       console.error("Failed to fetch feed:", err);
     }
-  }, []);
+  }, [config.gasEndpoint]);
 
   useEffect(() => {
     fetchFeed();
@@ -41,7 +42,6 @@ export default function LiveWall() {
     };
   }, [fetchFeed]);
 
-  // Ken Burns slideshow
   useEffect(() => {
     if (feed.length === 0) return;
 
@@ -53,7 +53,6 @@ export default function LiveWall() {
         setCurrentIndex((prev) => (prev + 1) % feed.length);
         setTransitioning(false);
 
-        // Show transcript after transition
         const item = feed[(currentIndex + 1) % feed.length];
         if (item?.transcript) {
           setTimeout(() => setShowTranscript(true), 1200);
@@ -76,31 +75,23 @@ export default function LiveWall() {
 
       {feed.length === 0 ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-          <div className="font-script text-3xl text-gold/60">Kendra & Diego</div>
+          <div className="font-script text-3xl text-gold/60">{config.coupleNames}</div>
           <p className="font-body text-sm text-cream/40">Waiting for guest photos…</p>
           <div className="w-8 h-8 border-2 border-cream/20 border-t-cream/50 rounded-full animate-spin mt-4" />
         </div>
       ) : (
         <>
-          {/* Photo */}
-          <div
-            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ${
-              transitioning ? "opacity-0" : "opacity-100"
-            }`}
-          >
+          <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ${transitioning ? "opacity-0" : "opacity-100"}`}>
             <div className="relative w-full h-full">
               <img
                 src={currentItem?.imageUrl}
                 alt="Guest photo"
                 className="w-full h-full object-contain"
-                style={{
-                  animation: transitioning ? "none" : "kenBurns 6s ease-in-out infinite alternate",
-                }}
+                style={{ animation: transitioning ? "none" : "kenBurns 6s ease-in-out infinite alternate" }}
               />
             </div>
           </div>
 
-          {/* Transcript overlay */}
           {showTranscript && currentItem?.transcript && (
             <div className="absolute bottom-0 left-0 right-0 z-10">
               <div className="bg-gradient-to-t from-navy/90 via-navy/60 to-transparent pt-20 pb-12 px-8">
@@ -117,40 +108,31 @@ export default function LiveWall() {
                     </div>
                   )}
                   <p className="font-script text-2xl md:text-3xl text-cream/90 leading-relaxed">
-                    "{currentItem.transcript}"
+                    &ldquo;{currentItem.transcript}&rdquo;
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Phase badge — top right */}
           <div className="absolute top-6 right-6 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-navy/40 backdrop-blur-sm border border-cream/10">
             <span className="w-1.5 h-1.5 rounded-full bg-gold" />
             <span className="font-body text-[10px] text-cream/70 font-medium">{currentItem?.phase?.replace(/_/g, " ")}</span>
           </div>
 
-          {/* QR badge — bottom right */}
           <div className="absolute bottom-6 right-6 z-10">
-            <Link
-              to="/"
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-navy/50 backdrop-blur-sm border border-cream/10 hover:bg-navy/60 transition-colors"
-            >
+            <Link to="/" className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-navy/50 backdrop-blur-sm border border-cream/10 hover:bg-navy/60 transition-colors">
               <QrCode className="w-6 h-6 text-cream/60" />
-              <span className="font-body text-[8px] text-cream/40 text-center leading-tight">
-                Scan to open<br />camera
-              </span>
+              <span className="font-body text-[8px] text-cream/40 text-center leading-tight">Scan to open<br />camera</span>
             </Link>
           </div>
 
-          {/* Couple watermark — top left */}
           <div className="absolute top-6 left-6 z-10">
-            <span className="font-script text-xl text-cream/30">Kendra & Diego</span>
+            <span className="font-script text-xl text-cream/30">{config.coupleNames}</span>
           </div>
         </>
       )}
 
-      {/* Ken Burns keyframes */}
       <style>{`
         @keyframes kenBurns {
           0% { transform: scale(1) translate(0, 0); }

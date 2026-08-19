@@ -30,29 +30,11 @@ export default function CameraPage() {
     setAppPhase("voice");
   }, []);
 
-  const handleVoiceComplete = useCallback(
-    (result: { audioBlob: Blob | null; audioMimeType: string; transcript: string }) => {
-      setVoiceResult(result);
-      setAppPhase("uploading");
-      doUpload(result);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [capturedBlob],
-  );
-
-  const handleSkipVoice = useCallback(() => {
-    setSkipVoice(true);
-    setAppPhase("uploading");
-    doUpload(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [capturedBlob]);
-
   const doUpload = useCallback(
     async (voice: { audioBlob: Blob | null; audioMimeType: string; transcript: string } | null) => {
       if (!capturedBlob) return;
       await uploadPhoto(capturedBlob, voice ? { audioBlob: voice.audioBlob ?? undefined, audioMimeType: voice.audioMimeType, transcript: voice.transcript } : undefined);
       setAppPhase("done");
-      // Reset after 3 seconds
       setTimeout(() => {
         setCapturedBlob(null);
         setCapturedPreview(null);
@@ -64,11 +46,25 @@ export default function CameraPage() {
     [capturedBlob, uploadPhoto],
   );
 
+  const handleVoiceComplete = useCallback(
+    (result: { audioBlob: Blob | null; audioMimeType: string; transcript: string }) => {
+      setVoiceResult(result);
+      setAppPhase("uploading");
+      doUpload(result);
+    },
+    [doUpload],
+  );
+
+  const handleSkipVoice = useCallback(() => {
+    setSkipVoice(true);
+    setAppPhase("uploading");
+    doUpload(null);
+  }, [doUpload]);
+
   return (
     <div className="min-h-dvh flex flex-col bg-cream">
       <SyncHUD />
 
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-navy text-cream z-10">
         <Link to="/" className="p-2 rounded-full hover:bg-white/10 transition-colors">
           <ArrowLeft className="w-5 h-5" />
@@ -80,7 +76,6 @@ export default function CameraPage() {
         <div className="w-9" />
       </div>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col">
         {appPhase === "capture" && (
           <div className="flex-1">
@@ -90,28 +85,19 @@ export default function CameraPage() {
 
         {appPhase === "voice" && (
           <div className="flex-1 flex flex-col">
-            {/* Photo preview header */}
             {capturedPreview && (
               <div className="flex items-center gap-3 px-4 py-3 bg-cream border-b border-parchment">
-                <img
-                  src={capturedPreview}
-                  alt="Captured"
-                  className="w-14 h-14 rounded-lg object-cover border border-gold/20"
-                />
+                <img src={capturedPreview} alt="Captured" className="w-14 h-14 rounded-lg object-cover border border-gold/20" />
                 <div className="flex-1">
                   <p className="font-body text-xs text-floral-slate">Photo captured</p>
                   <p className="font-body text-sm text-navy font-medium">Add a voice message?</p>
                 </div>
-                <button
-                  onClick={handleSkipVoice}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-parchment text-floral-slate font-body text-xs hover:bg-parchment/40 transition-colors"
-                >
+                <button onClick={handleSkipVoice} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-parchment text-floral-slate font-body text-xs hover:bg-parchment/40 transition-colors">
                   Skip
                   <Check className="w-3 h-3" />
                 </button>
               </div>
             )}
-
             <div className="flex-1 flex items-center justify-center">
               <AudioGuestbook onComplete={handleVoiceComplete} onCancel={() => setAppPhase("capture")} />
             </div>
@@ -121,11 +107,7 @@ export default function CameraPage() {
         {appPhase === "uploading" && (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
             {capturedPreview && (
-              <img
-                src={capturedPreview}
-                alt="Uploading"
-                className="w-40 h-40 rounded-xl object-cover polaroid-shadow border-2 border-gold/20"
-              />
+              <img src={capturedPreview} alt="Uploading" className="w-40 h-40 rounded-xl object-cover polaroid-shadow border-2 border-gold/20" />
             )}
             <div className="flex items-center gap-3">
               <span className="w-5 h-5 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
@@ -133,7 +115,7 @@ export default function CameraPage() {
             </div>
             {voiceResult?.transcript && (
               <p className="font-script text-lg text-navy/60 text-center max-w-xs italic">
-                "{voiceResult.transcript}"
+                &ldquo;{voiceResult.transcript}&rdquo;
               </p>
             )}
           </div>

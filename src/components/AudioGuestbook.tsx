@@ -146,13 +146,13 @@ export default function AudioGuestbook({ onComplete }: AudioGuestbookProps) {
         {/* Timer ring */}
         <div className="relative w-28 h-28">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="44" fill="none" stroke="#E8DEC8" strokeWidth="4" />
+            <circle cx="50" cy="50" r="44" fill="none" style={{ stroke: "var(--color-parchment)" }} strokeWidth="4" />
             <circle
               cx="50"
               cy="50"
               r="44"
               fill="none"
-              stroke="#C59B9B"
+              style={{ stroke: "var(--color-mauve)" }}
               strokeWidth="4"
               strokeLinecap="round"
               strokeDasharray={276.46}

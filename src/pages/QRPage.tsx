@@ -2,10 +2,33 @@ import { useState, useRef, useCallback } from "react";
 import { ArrowLeft, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import QRCode from "qrcode";
+import { useDesignSystem } from "../context/DesignSystemContext";
 
 const PRODUCTION_URL = "https://kendraanddiego.me";
 
+function getFontStack(name: string): string {
+  const map: Record<string, string> = {
+    "Pinyon Script": '"Pinyon Script", "Great Vibes", cursive',
+    "Great Vibes": '"Great Vibes", "Dancing Script", cursive',
+    "Dancing Script": '"Dancing Script", "Great Vibes", cursive',
+    "Parisienne": '"Parisienne", "Great Vibes", cursive',
+    "Sacramento": '"Sacramento", "Pacifico", cursive',
+    "Cinzel": '"Cinzel", "Cormorant Garamond", serif',
+    "Cormorant Garamond": '"Cormorant Garamond", "EB Garamond", serif',
+    "Playfair Display": '"Playfair Display", "Cormorant Garamond", serif',
+    "Libre Baskerville": '"Libre Baskerville", "EB Garamond", serif',
+    "EB Garamond": '"EB Garamond", "Cormorant Garamond", serif',
+    "Montserrat": '"Montserrat", "Inter", sans-serif',
+    "Inter": '"Inter", "Montserrat", sans-serif',
+    "Lato": '"Lato", "Montserrat", sans-serif',
+    "Raleway": '"Raleway", "Montserrat", sans-serif',
+    "Nunito Sans": '"Nunito Sans", "Inter", sans-serif',
+  };
+  return map[name] ?? `"${name}", sans-serif`;
+}
+
 export default function QRPage() {
+  const { config } = useDesignSystem();
   const [generating, setGenerating] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -14,19 +37,22 @@ export default function QRPage() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const dpr = 3; // 300 DPI equivalent
-    const cardW = 5 * dpr * 96; // 5 inches at 96 base
+    const c = config.colors;
+    const f = config.fonts;
+
+    const dpr = 3;
+    const cardW = 5 * dpr * 96;
     const cardH = 7 * dpr * 96;
     canvas.width = cardW;
     canvas.height = cardH;
     const ctx = canvas.getContext("2d")!;
 
     // Background
-    ctx.fillStyle = "#FBF8F3";
+    ctx.fillStyle = c.cream;
     ctx.fillRect(0, 0, cardW, cardH);
 
     // Double gold border
-    ctx.strokeStyle = "#C2A676";
+    ctx.strokeStyle = c.gold;
     ctx.lineWidth = 4;
     roundRect(ctx, 20, 20, cardW - 40, cardH - 40, 16);
     ctx.stroke();
@@ -34,15 +60,10 @@ export default function QRPage() {
     roundRect(ctx, 32, 32, cardW - 64, cardH - 64, 12);
     ctx.stroke();
 
-    // Corner floral accents (simple diamond shapes)
+    // Corner accents
     const accentSize = 12;
-    const corners = [
-      [44, 44],
-      [cardW - 44, 44],
-      [44, cardH - 44],
-      [cardW - 44, cardH - 44],
-    ];
-    ctx.fillStyle = "#C2A676";
+    const corners = [[44, 44], [cardW - 44, 44], [44, cardH - 44], [cardW - 44, cardH - 44]];
+    ctx.fillStyle = c.gold;
     for (const [cx, cy] of corners) {
       ctx.save();
       ctx.translate(cx, cy);
@@ -51,24 +72,23 @@ export default function QRPage() {
       ctx.restore();
     }
 
-    // Header text — couple names
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    ctx.font = `${Math.round(cardW * 0.085)}px "Pinyon Script", cursive`;
-    ctx.fillStyle = "#1E2D3D";
-    ctx.fillText("Kendra & Diego", cardW / 2, cardH * 0.12);
+    // Couple names
+    ctx.font = `${Math.round(cardW * 0.085)}px ${getFontStack(f.script)}`;
+    ctx.fillStyle = c.navy;
+    ctx.fillText(config.coupleNames, cardW / 2, cardH * 0.12);
 
     // Decorative line
     const lineY = cardH * 0.17;
-    ctx.strokeStyle = "#C2A676";
+    ctx.strokeStyle = c.gold;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(cardW * 0.3, lineY);
     ctx.lineTo(cardW * 0.7, lineY);
     ctx.stroke();
-    // Center diamond
-    ctx.fillStyle = "#C2A676";
+    ctx.fillStyle = c.gold;
     ctx.save();
     ctx.translate(cardW / 2, lineY);
     ctx.rotate(Math.PI / 4);
@@ -76,11 +96,13 @@ export default function QRPage() {
     ctx.restore();
 
     // Date & venue
-    ctx.font = `500 ${Math.round(cardW * 0.025)}px "Cormorant Garamond", serif`;
-    ctx.fillStyle = "#5B7B94";
-    ctx.fillText("September 11, 2026", cardW / 2, cardH * 0.21);
-    ctx.font = `${Math.round(cardW * 0.02)}px "Montserrat", sans-serif`;
-    ctx.fillText("The Starlight Garden • Spring, TX", cardW / 2, cardH * 0.245);
+    const dateObj = new Date(config.weddingDate + "T12:00:00");
+    const dateStr = dateObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    ctx.font = `500 ${Math.round(cardW * 0.025)}px ${getFontStack(f.display)}`;
+    ctx.fillStyle = c.floralSlate;
+    ctx.fillText(dateStr, cardW / 2, cardH * 0.21);
+    ctx.font = `${Math.round(cardW * 0.02)}px ${getFontStack(f.body)}`;
+    ctx.fillText(config.venue, cardW / 2, cardH * 0.245);
 
     // QR Code
     const qrSize = cardW * 0.38;
@@ -88,21 +110,17 @@ export default function QRPage() {
     await QRCode.toCanvas(qrCanvas, PRODUCTION_URL, {
       width: qrSize,
       margin: 0,
-      color: {
-        dark: "#1E2D3D",
-        light: "#00000000",
-      },
+      color: { dark: c.navy, light: "#00000000" },
       errorCorrectionLevel: "H",
     });
 
-    // QR background circle
     const qrX = cardW / 2 - qrSize / 2;
     const qrY = cardH * 0.32;
     ctx.fillStyle = "#FFFFFF";
     ctx.beginPath();
     ctx.arc(cardW / 2, qrY + qrSize / 2, qrSize / 2 + 16, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#E8DEC8";
+    ctx.strokeStyle = c.parchment;
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -110,8 +128,8 @@ export default function QRPage() {
 
     // Footer text
     ctx.textAlign = "center";
-    ctx.font = `${Math.round(cardW * 0.018)}px "Montserrat", sans-serif`;
-    ctx.fillStyle = "#1E2D3D";
+    ctx.font = `${Math.round(cardW * 0.018)}px ${getFontStack(f.body)}`;
+    ctx.fillStyle = c.navy;
     const footerLines = [
       "Scan with your phone camera",
       "to capture disposable photos",
@@ -127,7 +145,7 @@ export default function QRPage() {
 
     // Bottom decorative line
     const bottomLineY = cardH - 56;
-    ctx.strokeStyle = "#C2A676";
+    ctx.strokeStyle = c.gold;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(cardW * 0.3, bottomLineY);
@@ -135,20 +153,19 @@ export default function QRPage() {
     ctx.stroke();
 
     setGenerating(false);
-  }, []);
+  }, [config]);
 
   const downloadCard = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const link = document.createElement("a");
-    link.download = "KD-Wedding-QR-Card.png";
+    link.download = "Wedding-QR-Card.png";
     link.href = canvas.toDataURL("image/png", 1.0);
     link.click();
   }, []);
 
   return (
     <div className="min-h-dvh flex flex-col bg-cream">
-      {/* Header */}
       <div className="flex items-center px-4 py-3 bg-navy text-cream">
         <Link to="/" className="p-2 rounded-full hover:bg-white/10 transition-colors">
           <ArrowLeft className="w-5 h-5" />
@@ -162,12 +179,10 @@ export default function QRPage() {
           Generate printable 5×7 table cards with QR codes for your reception tables.
         </p>
 
-        {/* Card preview */}
         <div className="w-full max-w-[280px] bg-white rounded-xl shadow-lg shadow-navy/8 border border-parchment overflow-hidden">
           <canvas ref={canvasRef} className="w-full h-auto" />
         </div>
 
-        {/* Buttons */}
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button
             onClick={generateCard}
@@ -198,14 +213,7 @@ export default function QRPage() {
   );
 }
 
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.lineTo(x + w - r, y);

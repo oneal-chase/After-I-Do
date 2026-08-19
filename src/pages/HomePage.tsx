@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
-import { Camera, Radio, QrCode } from "lucide-react";
-import { WEDDING_CONFIG, getCurrentPhase } from "../config/wedding.config";
+import { Camera, Radio, QrCode, Settings } from "lucide-react";
+import { useDesignSystem } from "../context/DesignSystemContext";
+import { getCurrentPhase, getPhaseDisplayName } from "../config/wedding.config";
 import SyncHUD from "../components/SyncHUD";
 
 export default function HomePage() {
+  const { config } = useDesignSystem();
   const phase = getCurrentPhase();
-  const displayName = WEDDING_CONFIG.timeline.find((t) => t.folderName === phase)?.name ?? "General";
+  const displayName = getPhaseDisplayName(phase);
 
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6 py-12 bg-cream">
@@ -15,17 +17,21 @@ export default function HomePage() {
       <div className="w-16 h-px bg-gold/50 mb-6" />
 
       {/* Monogram */}
-      <div className="font-display text-5xl text-gold tracking-widest mb-2">K & D</div>
+      <div className="font-display text-5xl text-gold tracking-widest mb-2">{config.monogram}</div>
 
       {/* Names */}
-      <h1 className="font-script text-4xl text-navy mb-1">Kendra & Diego</h1>
+      <h1 className="font-script text-4xl text-navy mb-1">{config.coupleNames}</h1>
 
       {/* Date */}
       <p className="font-body text-sm text-floral-slate tracking-widest uppercase mb-1">
-        September 11, 2026
+        {new Date(config.weddingDate + "T12:00:00").toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}
       </p>
       <p className="font-body text-xs text-parchment mb-10">
-        {WEDDING_CONFIG.venue}
+        {config.venue}
       </p>
 
       {/* Decorative divider */}
@@ -68,10 +74,14 @@ export default function HomePage() {
         </Link>
       </div>
 
-      {/* Footer */}
-      <p className="mt-12 font-body text-[10px] text-parchment/60 text-center">
-        No app download required — photos sync live to the couple's private album
-      </p>
+      {/* Customize link */}
+      <Link
+        to="/onboard"
+        className="mt-8 flex items-center gap-1.5 font-body text-[11px] text-parchment/50 hover:text-parchment transition-colors"
+      >
+        <Settings className="w-3 h-3" />
+        Customize this wedding
+      </Link>
     </div>
   );
 }

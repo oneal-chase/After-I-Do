@@ -1,4 +1,5 @@
-import { getCurrentPhase, getPhaseDisplayName } from "../config/wedding.config";
+import { getWeddingConfig, getCurrentPhase, getPhaseDisplayName } from "../config/wedding.config";
+import { type ColorTokens } from "../config/designTokens";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -19,10 +20,42 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getFontStack(name: string): string {
+  const map: Record<string, string> = {
+    "Pinyon Script": '"Pinyon Script", "Great Vibes", cursive',
+    "Great Vibes": '"Great Vibes", "Dancing Script", cursive',
+    "Dancing Script": '"Dancing Script", "Great Vibes", cursive',
+    "Parisienne": '"Parisienne", "Great Vibes", cursive',
+    "Sacramento": '"Sacramento", "Pacifico", cursive',
+    "Cinzel": '"Cinzel", "Cormorant Garamond", serif',
+    "Cormorant Garamond": '"Cormorant Garamond", "EB Garamond", serif',
+    "Playfair Display": '"Playfair Display", "Cormorant Garamond", serif',
+    "Libre Baskerville": '"Libre Baskerville", "EB Garamond", serif',
+    "EB Garamond": '"EB Garamond", "Cormorant Garamond", serif',
+    "Montserrat": '"Montserrat", "Inter", sans-serif',
+    "Inter": '"Inter", "Montserrat", sans-serif',
+    "Lato": '"Lato", "Montserrat", sans-serif',
+    "Raleway": '"Raleway", "Montserrat", sans-serif',
+    "Nunito Sans": '"Nunito Sans", "Inter", sans-serif',
+  };
+  return map[name] ?? `"${name}", sans-serif`;
+}
+
 export async function stampPolaroidFrame(
   rawBlob: Blob,
   phaseName?: string,
 ): Promise<Blob> {
+  const config = getWeddingConfig();
+  const colors: ColorTokens = config.colors;
+  const fonts = config.fonts;
+
   const phase = phaseName ?? getCurrentPhase();
   const displayName = getPhaseDisplayName(phase);
 
@@ -48,12 +81,12 @@ export async function stampPolaroidFrame(
   canvas.height = canvasH;
   const ctx = canvas.getContext("2d")!;
 
-  // Warm ivory background
-  ctx.fillStyle = "#FBF8F3";
+  // Background
+  ctx.fillStyle = colors.cream;
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   // Outer gold border
-  ctx.strokeStyle = "#C2A676";
+  ctx.strokeStyle = colors.gold;
   ctx.lineWidth = Math.round(w * 0.008);
   const inset = Math.round(framePadding * 0.35);
   roundRect(ctx, inset, inset, canvasW - inset * 2, canvasH - inset * 2, Math.round(w * 0.012));
@@ -65,40 +98,43 @@ export async function stampPolaroidFrame(
   roundRect(ctx, innerInset, innerInset, canvasW - innerInset * 2, canvasH - innerInset * 2, Math.round(w * 0.008));
   ctx.stroke();
 
-  // Draw the photo
+  // Photo
   ctx.drawImage(photo, framePadding, framePadding, w, h);
 
   // Subtle photo border
-  ctx.strokeStyle = "rgba(194, 166, 118, 0.3)";
+  ctx.strokeStyle = hexToRgba(colors.gold, 0.3);
   ctx.lineWidth = 1;
   ctx.strokeRect(framePadding, framePadding, w, h);
 
-  // Bottom bezel content
+  // Bottom bezel
   const bezelY = framePadding + h + framePadding * 0.4;
-
-  // Monogram "KD" centered
   const monoSize = Math.round(w * 0.06);
-  ctx.font = `${monoSize}px "Cinzel", serif`;
-  ctx.fillStyle = "#C2A676";
+
+  // Monogram
+  ctx.font = `${monoSize}px ${getFontStack(fonts.display)}`;
+  ctx.fillStyle = colors.gold;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("K D", canvasW / 2, bezelY + monoSize * 0.6);
+  ctx.fillText(config.monogram || "K D", canvasW / 2, bezelY + monoSize * 0.6);
 
-  // Couple name and date
+  // Couple name
   const textSize = Math.round(w * 0.022);
-  ctx.font = `${textSize}px "Cormorant Garamond", serif`;
-  ctx.fillStyle = "#1E2D3D";
+  ctx.font = `${textSize}px ${getFontStack(fonts.display)}`;
+  ctx.fillStyle = colors.navy;
   ctx.textAlign = "left";
-  ctx.fillText("Kendra & Diego", framePadding * 2, bezelY + monoSize + textSize * 1.8);
+  ctx.fillText(config.coupleNames, framePadding * 2, bezelY + monoSize + textSize * 1.8);
 
+  // Date
   const dateSize = Math.round(w * 0.018);
-  ctx.font = `${dateSize}px "Montserrat", sans-serif`;
-  ctx.fillStyle = "#5B7B94";
-  ctx.fillText("September 11, 2026", framePadding * 2, bezelY + monoSize + textSize * 3.2);
+  ctx.font = `${dateSize}px ${getFontStack(fonts.body)}`;
+  ctx.fillStyle = colors.floralSlate;
+  const dateObj = new Date(config.weddingDate + "T12:00:00");
+  const dateStr = dateObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  ctx.fillText(dateStr, framePadding * 2, bezelY + monoSize + textSize * 3.2);
 
   // Phase badge
   const badgeSize = Math.round(w * 0.019);
-  ctx.font = `500 ${badgeSize}px "Montserrat", sans-serif`;
+  ctx.font = `500 ${badgeSize}px ${getFontStack(fonts.body)}`;
   const badgeText = displayName;
   const badgeMetrics = ctx.measureText(badgeText);
   const badgeW = badgeMetrics.width + badgeSize * 1.6;
@@ -106,27 +142,21 @@ export async function stampPolaroidFrame(
   const badgeX = canvasW - framePadding * 2 - badgeW;
   const badgeY = bezelY + monoSize * 0.15;
 
-  // Badge background
-  ctx.fillStyle = "rgba(197, 155, 155, 0.15)";
+  ctx.fillStyle = hexToRgba(colors.mauve, 0.15);
   roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeSize * 0.5);
   ctx.fill();
-  ctx.strokeStyle = "#C59B9B";
+  ctx.strokeStyle = colors.mauve;
   ctx.lineWidth = 1;
   roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeSize * 0.5);
   ctx.stroke();
 
-  // Badge text
-  ctx.fillStyle = "#C59B9B";
+  ctx.fillStyle = colors.mauve;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2);
 
   return new Promise((resolve) => {
-    canvas.toBlob(
-      (blob) => resolve(blob!),
-      "image/jpeg",
-      0.85,
-    );
+    canvas.toBlob((blob) => resolve(blob!), "image/jpeg", 0.85);
   });
 }
 

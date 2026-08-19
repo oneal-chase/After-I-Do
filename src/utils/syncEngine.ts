@@ -1,5 +1,5 @@
 import { get, set } from "idb-keyval";
-import { WEDDING_CONFIG } from "../config/wedding.config";
+import { getWeddingConfig } from "../config/wedding.config";
 
 export interface PhotoRecord {
   id: string;
@@ -100,7 +100,7 @@ async function processQueue() {
       await emitChange();
 
       try {
-        const endpoint = WEDDING_CONFIG.gasEndpoint;
+        const endpoint = getWeddingConfig().gasEndpoint;
         if (!endpoint) throw new Error("No GAS endpoint configured");
 
         const payload = {
@@ -136,7 +136,6 @@ async function processQueue() {
   }
 }
 
-// Online listener
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
     processQueue();
