@@ -34,19 +34,19 @@ export default function FontStep() {
       <div className="p-6 rounded-xl border border-parchment bg-cream/50 text-center">
         <p
           className="text-3xl mb-2 text-navy"
-          style={{ fontFamily: getFontStack(config.fonts.script, "script") }}
+          style={{ fontFamily: getFontStack(config.fonts.script) }}
         >
           {sampleText}
         </p>
         <p
           className="text-lg text-floral-slate"
-          style={{ fontFamily: getFontStack(config.fonts.display, "display") }}
+          style={{ fontFamily: getFontStack(config.fonts.display) }}
         >
           September 11, 2026
         </p>
         <p
           className="text-sm text-parchment mt-2"
-          style={{ fontFamily: getFontStack(config.fonts.body, "body") }}
+          style={{ fontFamily: getFontStack(config.fonts.body) }}
         >
           The Starlight Garden • Spring, TX
         </p>
