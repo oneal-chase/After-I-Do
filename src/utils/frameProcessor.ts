@@ -1,5 +1,5 @@
 import { getWeddingConfig, getCurrentPhase, getPhaseDisplayName } from "../config/wedding.config";
-import { type ColorTokens } from "../config/designTokens";
+import { type ColorTokens, getFontStack } from "../config/designTokens";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -25,27 +25,6 @@ function hexToRgba(hex: string, alpha: number): string {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function getFontStack(name: string): string {
-  const map: Record<string, string> = {
-    "Pinyon Script": '"Pinyon Script", "Great Vibes", cursive',
-    "Great Vibes": '"Great Vibes", "Dancing Script", cursive',
-    "Dancing Script": '"Dancing Script", "Great Vibes", cursive',
-    "Parisienne": '"Parisienne", "Great Vibes", cursive',
-    "Sacramento": '"Sacramento", "Pacifico", cursive',
-    "Cinzel": '"Cinzel", "Cormorant Garamond", serif',
-    "Cormorant Garamond": '"Cormorant Garamond", "EB Garamond", serif',
-    "Playfair Display": '"Playfair Display", "Cormorant Garamond", serif',
-    "Libre Baskerville": '"Libre Baskerville", "EB Garamond", serif',
-    "EB Garamond": '"EB Garamond", "Cormorant Garamond", serif',
-    "Montserrat": '"Montserrat", "Inter", sans-serif',
-    "Inter": '"Inter", "Montserrat", sans-serif',
-    "Lato": '"Lato", "Montserrat", sans-serif',
-    "Raleway": '"Raleway", "Montserrat", sans-serif',
-    "Nunito Sans": '"Nunito Sans", "Inter", sans-serif',
-  };
-  return map[name] ?? `"${name}", sans-serif`;
 }
 
 export async function stampPolaroidFrame(

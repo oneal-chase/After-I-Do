@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback } from "react";
-import { Mic, MicOff, Play, Pause, Check, RotateCcw } from "lucide-react";
+import { Mic, MicOff, Play, Pause, Check, RotateCcw, ArrowLeft } from "lucide-react";
 import {
   AudioGuestbookEngine,
   isSpeechSupported,
   isMediaRecorderSupported,
 } from "../utils/audioGuestbook";
+import { useDesignSystem } from "../context/DesignSystemContext";
 
 interface AudioGuestbookProps {
   onComplete: (result: {
@@ -15,7 +16,8 @@ interface AudioGuestbookProps {
   onCancel: () => void;
 }
 
-export default function AudioGuestbook({ onComplete }: AudioGuestbookProps) {
+export default function AudioGuestbook({ onComplete, onCancel }: AudioGuestbookProps) {
+  const { config } = useDesignSystem();
   const [phase, setPhase] = useState<"idle" | "recording" | "review">("idle");
   const [transcript, setTranscript] = useState("");
   const [interimText, setInterimText] = useState("");
@@ -29,6 +31,16 @@ export default function AudioGuestbook({ onComplete }: AudioGuestbookProps) {
 
   const maxSeconds = 15;
   const progress = (elapsed / maxSeconds) * 100;
+
+  const finalizeRecording = useCallback(
+    (blob: Blob, mimeType: string) => {
+      setAudioBlob(blob);
+      setAudioMimeType(mimeType);
+      setPhase("review");
+      setEditableTranscript((prev) => (prev + " " + interimText).trim());
+    },
+    [interimText],
+  );
 
   const startRecording = useCallback(async () => {
     if (!isMediaRecorderSupported()) {
@@ -53,15 +65,11 @@ export default function AudioGuestbook({ onComplete }: AudioGuestbookProps) {
         }
       },
       (seconds) => setElapsed(seconds),
+      (autoStopResult) => {
+        finalizeRecording(autoStopResult.audioBlob, autoStopResult.mimeType);
+      },
     );
-
-    // Auto-stop after max duration
-    const { audioBlob: blob, mimeType } = await engine.stop();
-    setAudioBlob(blob);
-    setAudioMimeType(mimeType);
-    setPhase("review");
-    setEditableTranscript((prev) => (prev + " " + interimText).trim());
-  }, [interimText]);
+  }, [finalizeRecording]);
 
   const stopRecording = useCallback(async () => {
     if (engineRef.current?.isRecording) {
@@ -119,7 +127,7 @@ export default function AudioGuestbook({ onComplete }: AudioGuestbookProps) {
         <div className="text-center">
           <h3 className="font-display text-xl text-navy mb-2">Voice Guestbook</h3>
           <p className="font-body text-sm text-floral-slate max-w-xs">
-            Leave a recorded message for Kendra & Diego — up to {maxSeconds} seconds.
+            Leave a recorded message for {config.coupleNames} — up to {maxSeconds} seconds.
           </p>
           {!isSpeechSupported() && (
             <p className="font-body text-xs text-mauve mt-2">
@@ -135,6 +143,13 @@ export default function AudioGuestbook({ onComplete }: AudioGuestbookProps) {
           <Mic className="w-8 h-8 text-mauve group-active:scale-90 transition-transform" />
         </button>
         <span className="font-body text-xs text-parchment">Tap to start recording</span>
+        <button
+          onClick={onCancel}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-parchment text-floral-slate font-body text-sm hover:bg-parchment/40 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to camera
+        </button>
       </div>
     );
   }

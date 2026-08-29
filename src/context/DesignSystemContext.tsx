@@ -12,6 +12,7 @@ import {
   type FontTokens,
   STORAGE_KEY,
   getDefaultConfig,
+  getFontStack,
 } from "../config/designTokens";
 
 interface DesignSystemContextValue {
@@ -43,27 +44,6 @@ function injectCSSVariables(config: WeddingConfig) {
   root.style.setProperty("--font-body", bodyFont);
 }
 
-function getFontStack(name: string): string {
-  const map: Record<string, string> = {
-    "Pinyon Script": '"Pinyon Script", "Great Vibes", cursive',
-    "Great Vibes": '"Great Vibes", "Dancing Script", cursive',
-    "Dancing Script": '"Dancing Script", "Great Vibes", cursive',
-    "Parisienne": '"Parisienne", "Great Vibes", cursive',
-    "Sacramento": '"Sacramento", "Pacifico", cursive',
-    "Cinzel": '"Cinzel", "Cormorant Garamond", serif',
-    "Cormorant Garamond": '"Cormorant Garamond", "EB Garamond", serif',
-    "Playfair Display": '"Playfair Display", "Cormorant Garamond", serif',
-    "Libre Baskerville": '"Libre Baskerville", "EB Garamond", serif',
-    "EB Garamond": '"EB Garamond", "Cormorant Garamond", serif',
-    "Montserrat": '"Montserrat", "Inter", sans-serif',
-    "Inter": '"Inter", "Montserrat", sans-serif',
-    "Lato": '"Lato", "Montserrat", sans-serif',
-    "Raleway": '"Raleway", "Montserrat", sans-serif',
-    "Nunito Sans": '"Nunito Sans", "Inter", sans-serif',
-  };
-  return map[name] ?? `"${name}", sans-serif`;
-}
-
 export function DesignSystemProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<WeddingConfig>(getDefaultConfig);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -74,6 +54,10 @@ export function DesignSystemProvider({ children }: { children: ReactNode }) {
       if (saved) {
         const parsed = JSON.parse(saved) as WeddingConfig;
         const merged = { ...getDefaultConfig(), ...parsed };
+        // Seed GAS endpoint from env if not set in config
+        if (!merged.gasEndpoint && import.meta.env.VITE_GAS_WEBHOOK_URL) {
+          merged.gasEndpoint = import.meta.env.VITE_GAS_WEBHOOK_URL;
+        }
         setConfig(merged);
         injectCSSVariables(merged);
       } else {

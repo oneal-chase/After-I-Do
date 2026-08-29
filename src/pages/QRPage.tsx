@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { ArrowLeft, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import QRCode from "qrcode";
-import { useDesignSystem } from "../context/DesignSystemContext";
+import { useDesignSystem, getFontStack } from "../context/DesignSystemContext";
 
 const PRODUCTION_URL = "https://kendraanddiego.me";
 
@@ -14,27 +14,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = reject;
     img.src = src;
   });
-}
-
-function getFontStack(name: string): string {
-  const map: Record<string, string> = {
-    "Pinyon Script": '"Pinyon Script", "Great Vibes", cursive',
-    "Great Vibes": '"Great Vibes", "Dancing Script", cursive',
-    "Dancing Script": '"Dancing Script", "Great Vibes", cursive',
-    "Parisienne": '"Parisienne", "Great Vibes", cursive',
-    "Sacramento": '"Sacramento", "Pacifico", cursive',
-    "Cinzel": '"Cinzel", "Cormorant Garamond", serif',
-    "Cormorant Garamond": '"Cormorant Garamond", "EB Garamond", serif',
-    "Playfair Display": '"Playfair Display", "Cormorant Garamond", serif',
-    "Libre Baskerville": '"Libre Baskerville", "EB Garamond", serif',
-    "EB Garamond": '"EB Garamond", "Cormorant Garamond", serif',
-    "Montserrat": '"Montserrat", "Inter", sans-serif',
-    "Inter": '"Inter", "Montserrat", sans-serif',
-    "Lato": '"Lato", "Montserrat", sans-serif',
-    "Raleway": '"Raleway", "Montserrat", sans-serif',
-    "Nunito Sans": '"Nunito Sans", "Inter", sans-serif',
-  };
-  return map[name] ?? `"${name}", sans-serif`;
 }
 
 export default function QRPage() {

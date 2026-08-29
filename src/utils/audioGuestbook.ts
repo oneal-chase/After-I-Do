@@ -32,6 +32,7 @@ export class AudioGuestbookEngine {
   async start(
     onInterim: (result: SpeechResult) => void,
     onTimeUpdate: (seconds: number) => void,
+    onComplete?: (result: { audioBlob: Blob; mimeType: string }) => void,
   ): Promise<void> {
     this.audioChunks = [];
 
@@ -93,9 +94,10 @@ export class AudioGuestbookEngine {
       }
     }, 1000);
 
-    this.timer = setTimeout(() => {
+    this.timer = setTimeout(async () => {
       clearInterval(interval);
-      this.stop();
+      const result = await this.stop();
+      onComplete?.(result);
     }, this.maxDuration);
   }
 

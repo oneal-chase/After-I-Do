@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useDesignSystem } from "../../context/DesignSystemContext";
-import { FONT_OPTIONS, DISPLAY_FONT_OPTIONS, BODY_FONT_OPTIONS } from "../../config/designTokens";
+import { FONT_OPTIONS, DISPLAY_FONT_OPTIONS, BODY_FONT_OPTIONS, getFontStack } from "../../config/designTokens";
 
 function buildGoogleFontsUrl(fonts: { script: string; display: string; body: string }): string {
   const script = FONT_OPTIONS.find((f) => f.name === fonts.script) ?? FONT_OPTIONS[0];
@@ -9,12 +9,6 @@ function buildGoogleFontsUrl(fonts: { script: string; display: string; body: str
 
   const families = [script.googleName, `${display.googleName}:wght@400;500;600;700`, `${body.googleName}:wght@300;400;500;600`];
   return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join("&")}&display=swap`;
-}
-
-function getFontStack(name: string, type: "script" | "display" | "body"): string {
-  const options = type === "script" ? FONT_OPTIONS : type === "display" ? DISPLAY_FONT_OPTIONS : BODY_FONT_OPTIONS;
-  const found = options.find((f) => f.name === name);
-  return found?.stack ?? `"${name}", sans-serif`;
 }
 
 export default function FontStep() {

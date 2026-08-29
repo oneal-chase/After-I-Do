@@ -283,13 +283,34 @@ export function getDefaultConfig(): WeddingConfig {
     fonts: { ...DEFAULT_FONTS },
     images: { monogram: "", background: "" },
     timeline: DEFAULT_TIMELINE.map((t) => ({ ...t })),
-    gasEndpoint: "",
+    gasEndpoint: import.meta.env.VITE_GAS_WEBHOOK_URL ?? "",
   };
 }
 
 export function getFontByName(name: string, type: "script" | "display" | "body"): FontDef {
   const options = type === "script" ? FONT_OPTIONS : type === "display" ? DISPLAY_FONT_OPTIONS : BODY_FONT_OPTIONS;
   return options.find((f) => f.name === name) ?? options[0];
+}
+
+export function getFontStack(name: string): string {
+  const map: Record<string, string> = {
+    "Pinyon Script": '"Pinyon Script", "Great Vibes", cursive',
+    "Great Vibes": '"Great Vibes", "Dancing Script", cursive',
+    "Dancing Script": '"Dancing Script", "Great Vibes", cursive',
+    "Parisienne": '"Parisienne", "Great Vibes", cursive',
+    "Sacramento": '"Sacramento", "Pacifico", cursive',
+    "Cinzel": '"Cinzel", "Cormorant Garamond", serif',
+    "Cormorant Garamond": '"Cormorant Garamond", "EB Garamond", serif',
+    "Playfair Display": '"Playfair Display", "Cormorant Garamond", serif',
+    "Libre Baskerville": '"Libre Baskerville", "EB Garamond", serif',
+    "EB Garamond": '"EB Garamond", "Cormorant Garamond", serif',
+    "Montserrat": '"Montserrat", "Inter", sans-serif',
+    "Inter": '"Inter", "Montserrat", sans-serif',
+    "Lato": '"Lato", "Montserrat", sans-serif',
+    "Raleway": '"Raleway", "Montserrat", sans-serif',
+    "Nunito Sans": '"Nunito Sans", "Inter", sans-serif',
+  };
+  return map[name] ?? `"${name}", sans-serif`;
 }
 
 export function buildGoogleFontsUrl(fonts: FontTokens): string {

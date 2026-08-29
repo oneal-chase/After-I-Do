@@ -17,60 +17,54 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
   const [cameraReady, setCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Attach stream to video element whenever streamRef changes
   useEffect(() => {
-    const video = videoRef.current;
-    const stream = streamRef.current;
-    if (video && stream) {
-      video.srcObject = stream;
-      video.play().then(() => setCameraReady(true)).catch(() => {});
-    }
-  }, [cameraReady]);
+    let cancelled = false;
 
-  const startCamera = useCallback(async (facingMode: "environment" | "user") => {
-    try {
-      // Stop previous stream
+    async function initCamera() {
+      // Cleanup old stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
       setCameraReady(false);
 
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-      });
-      streamRef.current = newStream;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
 
-      // Attach to video if ref is ready
-      const video = videoRef.current;
-      if (video) {
-        video.srcObject = newStream;
-        await video.play();
-        setCameraReady(true);
+        // Attach directly to video element
+        const video = videoRef.current;
+        if (video) {
+          video.srcObject = stream;
+          await video.play().catch(() => {});
+          if (!cancelled) setCameraReady(true);
+        }
+      } catch {
+        if (!cancelled) setError("Camera access denied. Please allow camera permission or use the upload button.");
       }
-    } catch {
-      setError("Camera access denied. Please allow camera permission or use the upload button.");
     }
-  }, []);
 
-  useEffect(() => {
-    startCamera(facing);
+    initCamera();
+
     return () => {
+      cancelled = true;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
     };
-  }, [facing, startCamera]);
+  }, [facing]);
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!video || !canvas || !video.videoWidth) return;
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -78,14 +72,12 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
     ctx.drawImage(video, 0, 0);
 
     if (navigator.vibrate) navigator.vibrate(50);
-
     setFlash(true);
     setTimeout(() => setFlash(false), 200);
 
     canvas.toBlob((blob) => {
       if (blob) {
-        const url = URL.createObjectURL(blob);
-        setPreview(url);
+        setPreview(URL.createObjectURL(blob));
       }
     }, "image/jpeg", 0.95);
   }, []);
@@ -101,20 +93,10 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
       });
   }, [preview, onCapture]);
 
-  const toggleCamera = useCallback(() => {
-    setFacing((f) => (f === "environment" ? "user" : "environment"));
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setPreview(URL.createObjectURL(file));
   }, []);
-
-  const handleFileInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        const url = URL.createObjectURL(file);
-        setPreview(url);
-      }
-    },
-    [],
-  );
 
   if (error) {
     return (
@@ -124,14 +106,7 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
         <p className="font-body text-sm text-floral-slate mb-6">{error}</p>
         <label className="cursor-pointer px-6 py-3 bg-navy text-cream rounded-full font-body text-sm font-medium hover:bg-navy/90 transition-colors">
           Upload a Photo Instead
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFileInput}
-          />
+          <input ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileInput} />
         </label>
       </div>
     );
@@ -141,13 +116,7 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
     <div className="relative w-full h-full bg-black overflow-hidden">
       {!preview && (
         <>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+          <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
           <canvas ref={canvasRef} className="hidden" />
 
           {flash && <div className="absolute inset-0 bg-white z-30 animate-pulse" />}
@@ -158,7 +127,7 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
               <span className="text-xs font-body font-medium text-mauve">{phaseName}</span>
             </div>
             <button
-              onClick={toggleCamera}
+              onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
               className="p-2.5 rounded-full bg-white/15 backdrop-blur-sm text-white hover:bg-white/25 transition-colors"
             >
               <SwitchCamera className="w-5 h-5" />
@@ -168,20 +137,13 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
           <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center gap-6 p-6 pb-10 bg-gradient-to-t from-black/60 to-transparent">
             <label className="cursor-pointer p-3 rounded-full bg-white/15 backdrop-blur-sm text-white hover:bg-white/25 transition-colors">
               <Camera className="w-6 h-6" />
-              <input
-                ref={inputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleFileInput}
-              />
+              <input ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileInput} />
             </label>
 
             <button
               onClick={captureFrame}
               disabled={!cameraReady}
-              className="relative w-[72px] h-[72px] rounded-full border-[3px] border-white/80 flex items-center justify-center group hover:border-gold transition-colors"
+              className="relative w-[72px] h-[72px] rounded-full border-[3px] border-white/80 flex items-center justify-center group hover:border-gold transition-colors disabled:opacity-40"
             >
               <div className="w-[60px] h-[60px] rounded-full bg-white group-hover:bg-gold/90 transition-all group-active:scale-90" />
             </button>
@@ -192,18 +154,11 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
       {preview && (
         <div className="absolute inset-0 z-40 bg-navy flex flex-col">
           <div className="flex-1 flex items-center justify-center p-4">
-            <img
-              src={preview}
-              alt="Preview"
-              className="max-w-full max-h-full object-contain rounded-lg polaroid-shadow"
-            />
+            <img src={preview} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg polaroid-shadow" />
           </div>
           <div className="flex items-center justify-center gap-6 p-6 pb-10">
             <button
-              onClick={() => {
-                setPreview(null);
-                URL.revokeObjectURL(preview);
-              }}
+              onClick={() => { setPreview(null); URL.revokeObjectURL(preview); }}
               className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/15 text-white font-body text-sm font-medium hover:bg-white/25 transition-colors"
             >
               <X className="w-4 h-4" />
