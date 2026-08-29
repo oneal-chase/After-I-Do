@@ -78,7 +78,7 @@ export default function CameraPage() {
 
       <div className="flex-1 flex flex-col">
         {appPhase === "capture" && (
-          <div className="flex-1">
+          <div className="flex-1 min-h-0">
             <CameraViewfinder onCapture={handleCapture} phaseName={displayName} />
           </div>
         )}
