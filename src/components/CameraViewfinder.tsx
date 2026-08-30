@@ -8,7 +8,6 @@ interface CameraViewfinderProps {
 
 export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfinderProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
@@ -63,9 +62,9 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || !video.videoWidth) return;
+    if (!video || !video.videoWidth) return;
 
+    const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d")!;
@@ -117,7 +116,6 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
       {!preview && (
         <>
           <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
-          <canvas ref={canvasRef} className="hidden" />
 
           {flash && <div className="absolute inset-0 bg-white z-30 animate-pulse" />}
 
