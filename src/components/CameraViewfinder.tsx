@@ -20,7 +20,6 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
     let cancelled = false;
 
     async function initCamera() {
-      // Cleanup old stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -37,7 +36,6 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
         }
         streamRef.current = stream;
 
-        // Attach directly to video element
         const video = videoRef.current;
         if (video) {
           video.srcObject = stream;
@@ -111,66 +109,66 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
     );
   }
 
-  return (
-    <div className="absolute inset-0 bg-black overflow-hidden">
-      {!preview && (
-        <>
-          <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
-
-          {flash && <div className="absolute inset-0 bg-white z-30 animate-pulse" />}
-
-          <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-mauve/25 backdrop-blur-sm">
-              <Volume2 className="w-3.5 h-3.5 text-mauve" />
-              <span className="text-xs font-body font-medium text-mauve">{phaseName}</span>
-            </div>
-            <button
-              onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
-              className="p-2.5 rounded-full bg-white/15 backdrop-blur-sm text-white hover:bg-white/25 transition-colors"
-            >
-              <SwitchCamera className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center gap-6 p-6 pb-10 bg-gradient-to-t from-black/60 to-transparent">
-            <label className="cursor-pointer p-3 rounded-full bg-white/15 backdrop-blur-sm text-white hover:bg-white/25 transition-colors">
-              <Camera className="w-6 h-6" />
-              <input ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileInput} />
-            </label>
-
-            <button
-              onClick={captureFrame}
-              disabled={!cameraReady}
-              className="relative w-[72px] h-[72px] rounded-full border-[3px] border-white/80 flex items-center justify-center group hover:border-gold transition-colors disabled:opacity-40"
-            >
-              <div className="w-[60px] h-[60px] rounded-full bg-white group-hover:bg-gold/90 transition-all group-active:scale-90" />
-            </button>
-          </div>
-        </>
-      )}
-
-      {preview && (
-        <div className="absolute inset-0 z-40 bg-navy flex flex-col">
-          <div className="flex-1 flex items-center justify-center p-4">
-            <img src={preview} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg polaroid-shadow" />
-          </div>
-          <div className="flex items-center justify-center gap-6 p-6 pb-10">
-            <button
-              onClick={() => { setPreview(null); URL.revokeObjectURL(preview); }}
-              className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/15 text-white font-body text-sm font-medium hover:bg-white/25 transition-colors"
-            >
-              <X className="w-4 h-4" />
-              Retake
-            </button>
-            <button
-              onClick={confirmCapture}
-              className="flex items-center gap-2 px-8 py-3 rounded-full bg-gold text-navy font-body text-sm font-semibold hover:bg-gold/90 transition-colors"
-            >
-              Use Photo
-            </button>
-          </div>
+  if (preview) {
+    return (
+      <div className="flex flex-col h-full bg-navy">
+        <div className="flex-1 flex items-center justify-center p-4 min-h-0">
+          <img src={preview} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg polaroid-shadow" />
         </div>
-      )}
+        <div className="flex items-center justify-center gap-4 p-6 pb-10 shrink-0">
+          <button
+            onClick={() => { setPreview(null); URL.revokeObjectURL(preview); }}
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/15 text-white font-body text-sm font-medium hover:bg-white/25 transition-colors"
+          >
+            <X className="w-4 h-4" />
+            Retake
+          </button>
+          <button
+            onClick={confirmCapture}
+            className="flex items-center gap-2 px-8 py-3 rounded-full bg-gold text-navy font-body text-sm font-semibold hover:bg-gold/90 transition-colors"
+          >
+            Use Photo
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-black">
+      <div className="relative flex-1 min-h-0">
+        <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
+
+        {flash && <div className="absolute inset-0 bg-white z-10 animate-pulse" />}
+
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-mauve/25 backdrop-blur-sm">
+            <Volume2 className="w-3.5 h-3.5 text-mauve" />
+            <span className="text-xs font-body font-medium text-mauve">{phaseName}</span>
+          </div>
+          <button
+            onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
+            className="p-2.5 rounded-full bg-white/15 backdrop-blur-sm text-white hover:bg-white/25 transition-colors"
+          >
+            <SwitchCamera className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center gap-6 p-6 pb-8 bg-gradient-to-t from-black/80 to-black/40 shrink-0">
+        <label className="cursor-pointer p-3 rounded-full bg-white/15 backdrop-blur-sm text-white hover:bg-white/25 transition-colors">
+          <Camera className="w-6 h-6" />
+          <input ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileInput} />
+        </label>
+
+        <button
+          onClick={captureFrame}
+          disabled={!cameraReady}
+          className="relative w-[72px] h-[72px] rounded-full border-[3px] border-white/80 flex items-center justify-center group hover:border-gold transition-colors disabled:opacity-40"
+        >
+          <div className="w-[60px] h-[60px] rounded-full bg-white group-hover:bg-gold/90 transition-all group-active:scale-90" />
+        </button>
+      </div>
     </div>
   );
 }
