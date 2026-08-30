@@ -135,7 +135,7 @@ export default function CameraViewfinder({ onCapture, phaseName }: CameraViewfin
   }
 
   return (
-    <div className="flex flex-col h-full bg-black">
+    <div className="flex flex-col flex-1 bg-black">
       <div className="relative flex-1 min-h-0">
         <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
 
