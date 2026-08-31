@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
 export interface WeddingOwner {
   email: string;
@@ -43,28 +44,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (raw) setUser(JSON.parse(raw));
-    } catch { /* ignore */ }
-    setIsLoaded(true);
+    let cancelled = false;
+    (async () => {
+      // Prefer Supabase session if configured (FOSS, self-hostable)
+      if (isSupabaseConfigured && supabase) {
+        const { data } = await supabase.auth.getSession();
+        const sUser = data.session?.user;
+        if (sUser && !cancelled) {
+          // try to recover slug/weddingId from weddings table or session metadata
+          const meta = sUser.user_metadata as Record<string, string> | undefined;
+          const fallback = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } })() as WeddingOwner | null;
+          const next: WeddingOwner = {
+            email: sUser.email || meta?.email || fallback?.email || "",
+            slug: meta?.slug || fallback?.slug || "",
+            weddingId: meta?.weddingId || fallback?.weddingId || sUser.id,
+          };
+          if (next.slug) {
+            setUser(next);
+            localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+          }
+        } else if (!cancelled) {
+          try {
+            const raw = localStorage.getItem(SESSION_KEY);
+            if (raw) setUser(JSON.parse(raw));
+          } catch { /* ignore */ }
+        }
+        if (!cancelled) setIsLoaded(true);
+        // keep in sync with future auth changes
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (cancelled) return;
+          if (session?.user) {
+            const u = session.user;
+            const m = u.user_metadata as Record<string, string> | undefined;
+            const fb2 = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } })() as WeddingOwner | null;
+            const n: WeddingOwner = { email: u.email || m?.email || fb2?.email || "", slug: m?.slug || fb2?.slug || "", weddingId: m?.weddingId || fb2?.weddingId || u.id };
+            if (n.slug) { setUser(n); localStorage.setItem(SESSION_KEY, JSON.stringify(n)); }
+          } else {
+            setUser(null);
+            localStorage.removeItem(SESSION_KEY);
+          }
+        });
+        return () => sub.subscription.unsubscribe();
+      }
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (raw) setUser(JSON.parse(raw));
+      } catch { /* ignore */ }
+      if (!cancelled) setIsLoaded(true);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const login = useCallback(async (slug: string, password: string) => {
+    // Supabase path (preferred, FOSS)
+    if (isSupabaseConfigured && supabase) {
+      const owners = loadOwners();
+      const rec = owners[slug.toLowerCase()];
+      const email = rec?.email;
+      if (!email) return false;
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return false;
+      const u = data.user;
+      if (!u) return false;
+      const next: WeddingOwner = { email: email.toLowerCase(), slug: slug.toLowerCase(), weddingId: rec.weddingId };
+      setUser(next);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      return true;
+    }
     const owners = loadOwners();
     const rec = owners[slug.toLowerCase()];
     if (!rec) return false;
     const hash = await sha256(password);
-    // support legacy plain stored (migrated) — if hash length mismatch, compare plain
     const ok = rec.passwordHash === hash || rec.passwordHash === password;
     if (!ok) return false;
-    // also try GAS verification best-effort (if wedding has gasEndpoint, let it confirm)
     try {
       const weddingRaw = localStorage.getItem(`wedding:${slug.toLowerCase()}`);
       if (weddingRaw) {
         const cfg = JSON.parse(weddingRaw) as { gasEndpoint?: string; gasToken?: string };
         if (cfg.gasEndpoint) {
-          // fire-and-forget verification; don't block login on network
           fetch(cfg.gasEndpoint, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -81,6 +138,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(async (email: string, password: string, slug: string, weddingId: string) => {
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.toLowerCase(),
+        password,
+        options: { data: { slug: slug.toLowerCase(), weddingId } },
+      });
+      if (error) throw new Error(error.message);
+      // Supabase may require email confirmation; still create local mapping for immediate login
+      const owners = loadOwners();
+      const key = slug.toLowerCase();
+      if (owners[key]) throw new Error("That wedding link is already taken. Try another slug.");
+      const passwordHash = await sha256(password);
+      owners[key] = { email: email.toLowerCase(), slug: key, weddingId, passwordHash };
+      saveOwners(owners);
+      const u = data.user;
+      const next: WeddingOwner = { email: email.toLowerCase(), slug: key, weddingId: u?.id || weddingId };
+      setUser(next);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      return;
+    }
     const owners = loadOwners();
     const key = slug.toLowerCase();
     if (owners[key]) throw new Error("That wedding link is already taken. Try another slug.");
@@ -93,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    if (isSupabaseConfigured && supabase) void supabase.auth.signOut();
     setUser(null);
     localStorage.removeItem(SESSION_KEY);
   }, []);
