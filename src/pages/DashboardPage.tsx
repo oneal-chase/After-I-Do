@@ -3,6 +3,7 @@ import { LogOut, QrCode, Radio, Settings, ExternalLink, Copy, Check } from "luci
 import { useAuth } from "../context/AuthContext";
 import { useDesignSystem } from "../context/DesignSystemContext";
 import { getWeddingUrl } from "../config/designTokens";
+import GoogleDriveConnect from "../components/GoogleDriveConnect";
 import { useState } from "react";
 
 export default function DashboardPage() {
@@ -50,6 +51,8 @@ export default function DashboardPage() {
       </header>
 
       <main className="flex-1 px-6 py-8 max-w-3xl mx-auto w-full space-y-6">
+        <GoogleDriveConnect />
+
         <div className="p-6 rounded-2xl border border-parchment bg-white shadow-sm">
           <h1 className="font-display text-xl text-navy mb-1">Your wedding dashboard</h1>
           <p className="font-body text-xs text-floral-slate">Only you can do these — guests at <span className="font-mono text-navy">/w/{slug}</span> never see them.</p>
@@ -108,9 +111,9 @@ export default function DashboardPage() {
         </div>
 
         <div className="p-4 rounded-xl border border-gold/20 bg-gold/5">
-          <p className="font-body text-xs font-medium text-navy">Auth is pluggable</p>
+          <p className="font-body text-xs font-medium text-navy">How Drive works</p>
           <p className="font-body text-[11px] text-floral-slate mt-1">
-            Today: per-wedding password (this browser + GAS master sheet). Swap <span className="font-mono">src/context/AuthContext.tsx</span> for Supabase/Clerk magic link without changing guest URLs.
+            Tap “Connect Google Drive” once — we create <span className="font-mono">Wedding Capture / your-slug</span> automatically. Guests never touch this. If you skip, photos still appear on the live wall via secure storage (you can connect later — we’ll still save to Drive going forward). Service-account setup is no longer needed.
           </p>
         </div>
       </main>

@@ -37,29 +37,17 @@ supabase link --project-ref YOUR_REF
 supabase db push
 ```
 
-## 3b. Keep Drive as image store (no GAS)
+## 3b. Drive for non-technical couples — one-click (recommended)
 
-The Edge Function `supabase/functions/upload-photo` does Drive *and* DB:
+No service account needed for couples:
 
-1. Create a Service Account: https://console.cloud.google.com → IAM → Service Accounts → Create → JSON key
-2. Create a Drive folder `Kendra-Diego Weddings` → Share it with the service account email (Editor)
-3. Copy its folder ID from URL (`.../folders/FOLDER_ID`)
-4. In Supabase Dashboard → Edge Functions → Secrets, set:
+1. **You (site owner) once:** https://console.cloud.google.com → APIs & Services → Credentials → Create → OAuth client ID → Web application → Authorized JavaScript origins: `https://yourdomain.me`, `http://localhost:5173` → Copy Client ID → set `VITE_GOOGLE_CLIENT_ID` in `.env` + Cloudflare.
+2. **Couple:** Dashboard → **Connect Google Drive** → Grant `drive.file` (app can only create its own files, not read whole Drive) → we auto-create `My Drive / Wedding Capture / {slug} / {phase}` and save every photo there. Button shows “Drive connected” + link to folder.
+3. **If they skip:** photos still go to Supabase Storage `wedding-photos` + `photos` table and appear on the live wall; they can connect later.
 
-```
-GOOGLE_SERVICE_ACCOUNT_KEY={"type":"service_account","private_key":"-----BEGIN PRIVATE KEY-----...","client_email":"..."}
-DRIVE_PARENT_FOLDER_ID=YOUR_FOLDER_ID
-```
+**Legacy service-account mode (still works):** If you prefer a server-owned Drive (no per-couple OAuth), set in Supabase Edge Secrets `GOOGLE_SERVICE_ACCOUNT_KEY` + `DRIVE_PARENT_FOLDER_ID` and deploy `supabase functions deploy upload-photo --no-verify-jwt`. Couples then need no button at all. Client OAuth takes precedence when a token exists.
 
-Deploy:
-
-```bash
-supabase functions deploy upload-photo --no-verify-jwt
-```
-
-From now on, `POST /functions/v1/upload-photo` saves the JPEG to `Drive/{weddingSlug}/{phaseName}/PHOTO_...jpg` (still viewable via `lh3.googleusercontent.com/d/{id}`) **and** inserts `photos` row for the live wall. If those two env vars are *not* set, it falls back to Supabase Storage `wedding-photos`.
-
-You can now **delete the Apps Script project** and clear `VITE_GAS_WEBHOOK_URL`. The GAS code in `docs/BACKEND_SETUP.md` is kept only as a legacy reference.
+You can now **delete the Apps Script project** and clear `VITE_GAS_WEBHOOK_URL`. The GAS code in `docs/BACKEND_SETUP.md` is kept only as legacy reference.
 
 ## 4. Auth + Live wall
 

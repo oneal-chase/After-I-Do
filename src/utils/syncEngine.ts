@@ -1,6 +1,7 @@
 import { get, set } from "idb-keyval";
 import { getWeddingConfig } from "../config/wedding.config";
 import { isSupabaseConfigured } from "../lib/supabase";
+import { getDriveToken, uploadImageToDrive } from "../lib/googleDrive";
 
 export interface PhotoRecord {
   id: string;
@@ -112,8 +113,34 @@ async function processQueue() {
         const cfg = getWeddingConfig();
         const weddingSlug = record.weddingSlug ?? cfg.slug ?? "";
 
-        // Prefer Supabase Edge Function (unified DB, Drive still default on server)
-        if (isSupabaseConfigured) {
+        // 1) If couple connected Drive via one-click OAuth (non-technical happy path), upload directly to Drive
+        //    and just insert metadata to Supabase — no service account, no GAS, no folder ID typing.
+        const driveToken = getDriveToken();
+        if (driveToken) {
+          const { fileId, imageUrl } = await uploadImageToDrive({
+            token: driveToken.token,
+            weddingSlug,
+            phaseName: record.phaseName,
+            imageBase64: record.imageBase64,
+          });
+          // still record in Supabase for live wall (single DB)
+          if (isSupabaseConfigured) {
+            try {
+              const { supabase } = await import("../lib/supabase");
+              if (supabase) {
+                await supabase.from("photos").insert({
+                  wedding_slug: weddingSlug,
+                  phase: record.phaseName,
+                  image_url: imageUrl,
+                  transcript: (record.transcript || "").slice(0, 280),
+                  file_id: fileId,
+                });
+              }
+            } catch { /* non-fatal */ }
+          }
+          record.status = "synced";
+          record.nextAttemptAt = undefined;
+        } else if (isSupabaseConfigured) {
           const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-photo`;
           const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
           const resp = await fetch(url, {
