@@ -1,8 +1,4 @@
--- 002_photos.sql — optional: store photo metadata in Supabase (FOSS replacement for Sheets)
--- If you keep GAS/Drive for images, you can skip this and just use weddings table.
--- If you want full Supabase, create storage bucket + this table and use Realtime for live wall.
-
--- Photos: one row per guest upload, isolated by wedding slug
+-- 002_photos.sql — now PRIMARY (GAS removed). Photos live in same Supabase DB as weddings; images still go to Drive by default via Edge Function.
 create table if not exists public.photos (
   id uuid primary key default gen_random_uuid(),
   wedding_slug text not null references public.weddings(slug) on delete cascade,
@@ -26,11 +22,10 @@ create policy "Anyone can insert photos (guest upload)"
   on public.photos for insert
   with check (true);
 
--- Storage bucket for images (run once)
--- insert into storage.buckets (id, name, public) values ('wedding-photos', 'wedding-photos', true)
---   on conflict (id) do nothing;
--- Then add storage policies in Dashboard > Storage > wedding-photos > Policies:
---   Allow public read, allow anon insert where bucket_id = 'wedding-photos'
+-- Storage bucket for fallback when Drive not configured (Edge Function will use Drive first)
+insert into storage.buckets (id, name, public) values ('wedding-photos', 'wedding-photos', true)
+  on conflict (id) do nothing;
 
--- Realtime for live wall (optional)
--- alter publication supabase_realtime add table public.photos;
+-- Storage RLS (run in dashboard if needed — Storage policies live in storage schema)
+-- Realtime for live wall
+alter publication supabase_realtime add table public.photos;

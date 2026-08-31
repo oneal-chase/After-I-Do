@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { QrCode } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useDesignSystem } from "../context/DesignSystemContext";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
 interface FeedItem {
   timestamp: string;
@@ -15,6 +16,8 @@ interface FeedItem {
 
 export default function LiveWall() {
   const { config } = useDesignSystem();
+  const params = useParams<{ slug: string }>();
+  const weddingSlug = params.slug || config.slug;
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
@@ -22,26 +25,65 @@ export default function LiveWall() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchFeed = useCallback(async () => {
+    // Prefer Supabase (single DB, Drive still default on server via Edge Function)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from("photos")
+          .select("created_at,phase,image_url,file_id,transcript")
+          .eq("wedding_slug", weddingSlug)
+          .order("created_at", { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        const mapped: FeedItem[] = (data || []).map((r: { created_at: string; phase: string; image_url: string; file_id: string; transcript: string | null }) => ({
+          timestamp: r.created_at,
+          phase: r.phase,
+          imageUrl: r.image_url,
+          fileId: r.file_id || "",
+          transcript: r.transcript || "",
+        }));
+        setFeed(mapped);
+        return;
+      } catch (err) {
+        console.error("Supabase feed failed, falling back to GAS:", err);
+      }
+    }
     const endpoint = config.gasEndpoint;
     if (!endpoint) return;
     try {
       const resp = await fetch(endpoint);
       const data = await resp.json();
       if (data.status === "success" && data.feed) {
-        setFeed(data.feed);
+        // filter to this wedding if GAS supports weddingSlug
+        const raw = data.feed as FeedItem[];
+        const filtered = weddingSlug ? raw.filter((f) => !f.phase || f.phase) : raw; // keep all for legacy single-wedding GAS
+        setFeed(filtered);
       }
     } catch (err) {
       console.error("Failed to fetch feed:", err);
     }
-  }, [config.gasEndpoint]);
+  }, [config.gasEndpoint, weddingSlug]);
 
   useEffect(() => {
     fetchFeed();
     intervalRef.current = setInterval(fetchFeed, 10000);
+
+    // Realtime: instant wall update when Supabase is primary (no poll lag)
+    let channel: ReturnType<NonNullable<typeof supabase>["channel"]> | null = null;
+    if (isSupabaseConfigured && supabase) {
+      channel = supabase
+        .channel(`photos-${weddingSlug}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "photos", filter: `wedding_slug=eq.${weddingSlug}` }, () => {
+          void fetchFeed();
+        })
+        .subscribe();
+    }
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (channel && supabase) void supabase.removeChannel(channel);
     };
-  }, [fetchFeed]);
+  }, [fetchFeed, weddingSlug]);
 
   // Clamp index when feed shrinks (poll can return fewer items)
   useEffect(() => {

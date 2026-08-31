@@ -1,5 +1,6 @@
 import { get, set } from "idb-keyval";
 import { getWeddingConfig } from "../config/wedding.config";
+import { isSupabaseConfigured } from "../lib/supabase";
 
 export interface PhotoRecord {
   id: string;
@@ -109,31 +110,53 @@ async function processQueue() {
 
       try {
         const cfg = getWeddingConfig();
-        const endpoint = record.weddingSlug
-          ? cfg.gasEndpoint // per-wedding endpoint is same deployment; slug is folder key — keep simple for now
-          : cfg.gasEndpoint;
-        if (!endpoint) throw new Error("No sync endpoint configured");
+        const weddingSlug = record.weddingSlug ?? cfg.slug ?? "";
 
-        const payload: Record<string, string> = {
-          image: record.imageBase64,
-          transcript: record.transcript ?? "",
-          phaseName: record.phaseName,
-          weddingSlug: record.weddingSlug ?? cfg.slug ?? "",
-        };
-        if (cfg.gasToken) payload.token = cfg.gasToken;
-
-        const resp = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(payload),
-        });
-
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const body = await resp.json().catch(() => ({ status: "success" }));
-        if (body.status === "error") throw new Error(body.message || "Upload rejected");
-
-        record.status = "synced";
-        record.nextAttemptAt = undefined;
+        // Prefer Supabase Edge Function (unified DB, Drive still default on server)
+        if (isSupabaseConfigured) {
+          const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-photo`;
+          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: anonKey,
+              Authorization: `Bearer ${anonKey}`,
+            },
+            body: JSON.stringify({
+              image: record.imageBase64,
+              transcript: record.transcript ?? "",
+              phaseName: record.phaseName,
+              weddingSlug,
+              token: cfg.gasToken || undefined,
+            }),
+          });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const body = await resp.json().catch(() => ({ status: "success" }));
+          if (body.status === "error") throw new Error(body.message || "Upload rejected");
+          record.status = "synced";
+          record.nextAttemptAt = undefined;
+        } else {
+          const endpoint = cfg.gasEndpoint;
+          if (!endpoint) throw new Error("No sync endpoint configured (set VITE_SUPABASE_URL or VITE_GAS_WEBHOOK_URL)");
+          const payload: Record<string, string> = {
+            image: record.imageBase64,
+            transcript: record.transcript ?? "",
+            phaseName: record.phaseName,
+            weddingSlug,
+          };
+          if (cfg.gasToken) payload.token = cfg.gasToken;
+          const resp = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload),
+          });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const body = await resp.json().catch(() => ({ status: "success" }));
+          if (body.status === "error") throw new Error(body.message || "Upload rejected");
+          record.status = "synced";
+          record.nextAttemptAt = undefined;
+        }
       } catch (err) {
         record.retries += 1;
         if (record.retries >= 5) {
