@@ -5,7 +5,7 @@ import {
   onQueueChange,
   processQueue,
 } from "../utils/syncEngine";
-import { getCurrentPhase } from "../config/wedding.config";
+import { getCurrentPhase, getWeddingConfig } from "../config/wedding.config";
 import { stampPolaroidFrame } from "../utils/frameProcessor";
 
 export interface SyncStatus {
@@ -33,14 +33,14 @@ export function usePhotoSync() {
   }, []);
 
   useEffect(() => {
-    refreshStatus();
-    const unsub = onQueueChange(refreshStatus);
+    void refreshStatus();
+    const unsub = onQueueChange(() => { void refreshStatus(); });
 
     const handleOnline = () => {
-      refreshStatus();
-      processQueue();
+      void refreshStatus();
+      void processQueue();
     };
-    const handleOffline = () => refreshStatus();
+    const handleOffline = () => { void refreshStatus(); };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -55,29 +55,35 @@ export function usePhotoSync() {
   const uploadPhoto = useCallback(
     async (
       imageBlob: Blob,
-      options?: { audioBlob?: Blob; audioMimeType?: string; transcript?: string },
+      options?: { transcript?: string },
     ) => {
-      const stamped = await stampPolaroidFrame(imageBlob, getCurrentPhase());
+      const imageToUpload = imageBlob;
+      const MAX_RAW_BYTES = 8 * 1024 * 1024;
+      if (imageToUpload.size > MAX_RAW_BYTES) {
+        throw new Error("Photo is too large. Try retaking with a lower resolution.");
+      }
+
+      const stamped = await stampPolaroidFrame(imageToUpload, getCurrentPhase());
 
       const toBase64 = (b: Blob) =>
-        new Promise<string>((resolve) => {
+        new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("Failed to read image"));
           reader.readAsDataURL(b);
         });
 
       const imageBase64 = await toBase64(stamped);
-      let audioBase64: string | undefined;
-      if (options?.audioBlob) {
-        audioBase64 = await toBase64(options.audioBlob);
-      }
+      const phaseName = getCurrentPhase();
+      const weddingSlug = (() => {
+        try { return getWeddingConfig().slug || ""; } catch { return ""; }
+      })();
 
       const record = await enqueuePhoto({
         imageBase64,
-        audioBase64,
-        audioMimeType: options?.audioMimeType,
-        transcript: options?.transcript,
-        phaseName: getCurrentPhase(),
+        transcript: options?.transcript?.slice(0, 280),
+        phaseName,
+        weddingSlug: weddingSlug || undefined,
       });
 
       await refreshStatus();

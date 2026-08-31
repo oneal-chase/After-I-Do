@@ -27,6 +27,9 @@ export interface ImageTokens {
 
 export interface WeddingConfig {
   onboardingComplete: boolean;
+  weddingId: string;
+  slug: string;
+  createdAt: string;
   coupleNames: string;
   monogram: string;
   weddingDate: string;
@@ -43,6 +46,7 @@ export interface WeddingConfig {
     end: string;
   }[];
   gasEndpoint: string;
+  gasToken: string;
 }
 
 export const STORAGE_KEY = "wedding-config";
@@ -264,6 +268,27 @@ export const DEFAULT_TIMELINE = [
   { id: "reception", name: "Reception Party", folderName: "03_Reception_Party", start: "19:30", end: "23:59" },
 ];
 
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32) || "wedding";
+}
+
+export function makeWeddingId(slugBase: string): string {
+  const rand = Math.random().toString(36).slice(2, 6);
+  return `${slugBase || "wedding"}-${rand}`;
+}
+
+export function getWeddingUrl(slug: string, path: string = "/camera"): string {
+  const base = (import.meta.env.VITE_SITE_URL as string | undefined) || window.location.origin;
+  const cleanSlug = slugify(slug);
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${base.replace(/\/$/, "")}/w/${cleanSlug}${cleanPath}`;
+}
+
 export function generateMonogram(names: string): string {
   return names
     .split(/[&+]/)
@@ -272,8 +297,12 @@ export function generateMonogram(names: string): string {
 }
 
 export function getDefaultConfig(): WeddingConfig {
+  const baseSlug = slugify("Kendra & Diego");
   return {
     onboardingComplete: false,
+    weddingId: makeWeddingId(baseSlug),
+    slug: baseSlug,
+    createdAt: new Date().toISOString(),
     coupleNames: "Kendra & Diego",
     monogram: "K D",
     weddingDate: "2026-09-11",
@@ -284,6 +313,7 @@ export function getDefaultConfig(): WeddingConfig {
     images: { monogram: "", background: "" },
     timeline: DEFAULT_TIMELINE.map((t) => ({ ...t })),
     gasEndpoint: import.meta.env.VITE_GAS_WEBHOOK_URL ?? "",
+    gasToken: import.meta.env.VITE_GAS_TOKEN ?? "",
   };
 }
 

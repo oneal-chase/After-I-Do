@@ -9,7 +9,8 @@ interface FeedItem {
   imageUrl: string;
   fileId: string;
   transcript: string;
-  audioFileId: string;
+  // legacy field — old records may have it, new text-only uploads leave empty
+  audioFileId?: string;
 }
 
 export default function LiveWall() {
@@ -42,6 +43,12 @@ export default function LiveWall() {
     };
   }, [fetchFeed]);
 
+  // Clamp index when feed shrinks (poll can return fewer items)
+  useEffect(() => {
+    if (feed.length === 0) return;
+    setCurrentIndex((prev) => (prev >= feed.length ? 0 : prev));
+  }, [feed.length]);
+
   useEffect(() => {
     if (feed.length === 0) return;
 
@@ -50,18 +57,20 @@ export default function LiveWall() {
       setShowTranscript(false);
 
       setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % feed.length);
+        setCurrentIndex((prev) => {
+          const next = (prev + 1) % feed.length;
+          const item = feed[next];
+          if (item?.transcript) {
+            setTimeout(() => setShowTranscript(true), 1200);
+          }
+          return next;
+        });
         setTransitioning(false);
-
-        const item = feed[(currentIndex + 1) % feed.length];
-        if (item?.transcript) {
-          setTimeout(() => setShowTranscript(true), 1200);
-        }
       }, 800);
     }, 6000);
 
     return () => clearInterval(cycle);
-  }, [feed, currentIndex]);
+  }, [feed]);
 
   const currentItem = feed[currentIndex];
 
@@ -96,17 +105,6 @@ export default function LiveWall() {
             <div className="absolute bottom-0 left-0 right-0 z-10">
               <div className="bg-gradient-to-t from-navy/90 via-navy/60 to-transparent pt-20 pb-12 px-8">
                 <div className="max-w-2xl mx-auto text-center animate-fade-in-up">
-                  {currentItem.audioFileId && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-mauve/20 border border-mauve/30 mb-3">
-                      <div className="flex gap-0.5">
-                        <span className="w-0.5 h-2 bg-mauve rounded-full animate-pulse" />
-                        <span className="w-0.5 h-3 bg-mauve rounded-full animate-pulse" style={{ animationDelay: "0.15s" }} />
-                        <span className="w-0.5 h-2 bg-mauve rounded-full animate-pulse" style={{ animationDelay: "0.3s" }} />
-                        <span className="w-0.5 h-2.5 bg-mauve rounded-full animate-pulse" style={{ animationDelay: "0.45s" }} />
-                      </div>
-                      <span className="font-body text-[10px] text-mauve font-medium">Voice note</span>
-                    </div>
-                  )}
                   <p className="font-script text-2xl md:text-3xl text-cream/90 leading-relaxed">
                     &ldquo;{currentItem.transcript}&rdquo;
                   </p>

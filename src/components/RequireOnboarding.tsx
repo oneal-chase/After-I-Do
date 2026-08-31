@@ -15,7 +15,11 @@ function isOnboardingDone(): boolean {
 export default function RequireOnboarding({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
-  if (location.pathname === "/onboard" || location.pathname === "/live") {
+  if (
+    location.pathname === "/onboard" ||
+    location.pathname === "/live" ||
+    location.pathname.startsWith("/w/")
+  ) {
     return <>{children}</>;
   }
 

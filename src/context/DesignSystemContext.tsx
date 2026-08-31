@@ -13,6 +13,8 @@ import {
   STORAGE_KEY,
   getDefaultConfig,
   getFontStack,
+  slugify,
+  makeWeddingId,
 } from "../config/designTokens";
 
 interface DesignSystemContextValue {
@@ -50,13 +52,41 @@ export function DesignSystemProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
+      // Guest private link: /w/:slug — load per-wedding config if present
+      const guestMatch = window.location.pathname.match(/^\/w\/([^/]+)/);
+      if (guestMatch) {
+        const slug = guestMatch[1];
+        const guestKey = `wedding:${slug.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`;
+        const guestRaw = localStorage.getItem(guestKey);
+        if (guestRaw) {
+          const parsed = JSON.parse(guestRaw) as WeddingConfig;
+          const merged = { ...getDefaultConfig(), ...parsed };
+          // ensure slug/id are from stored guest config, not default
+          merged.slug = parsed.slug || slug;
+          merged.weddingId = parsed.weddingId || merged.weddingId;
+          setConfig(merged);
+          injectCSSVariables(merged);
+          setIsLoaded(true);
+          return;
+        }
+      }
+
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as WeddingConfig;
         const merged = { ...getDefaultConfig(), ...parsed };
-        // Seed GAS endpoint from env if not set in config
+        // backfill new fields for old installs
+        if (!merged.weddingId) merged.weddingId = makeWeddingId(slugify(merged.coupleNames || "wedding"));
+        if (!merged.slug) {
+          merged.slug = slugify(merged.coupleNames || "wedding");
+        }
+        if (!merged.createdAt) merged.createdAt = new Date().toISOString();
+        // Seed GAS endpoint/token from env if not set in config
         if (!merged.gasEndpoint && import.meta.env.VITE_GAS_WEBHOOK_URL) {
           merged.gasEndpoint = import.meta.env.VITE_GAS_WEBHOOK_URL;
+        }
+        if (!merged.gasToken && import.meta.env.VITE_GAS_TOKEN) {
+          merged.gasToken = import.meta.env.VITE_GAS_TOKEN;
         }
         setConfig(merged);
         injectCSSVariables(merged);

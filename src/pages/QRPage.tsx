@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { useState, useRef, useCallback, useMemo } from "react";
+import { ArrowLeft, Download, Copy, Check, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import QRCode from "qrcode";
 import { useDesignSystem, getFontStack } from "../context/DesignSystemContext";
-
-const PRODUCTION_URL = "https://kendraanddiego.me";
+import { getWeddingUrl } from "../config/designTokens";
+import { saveWedding } from "../utils/weddingStore";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -19,10 +19,24 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 export default function QRPage() {
   const { config } = useDesignSystem();
   const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const weddingUrl = useMemo(() => getWeddingUrl(config.slug || "wedding", "/camera"), [config.slug]);
+  const liveUrl = useMemo(() => getWeddingUrl(config.slug || "wedding", "/live"), [config.slug]);
+
+  const handleCopy = useCallback(async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }, []);
 
   const generateCard = useCallback(async () => {
     setGenerating(true);
+    // ensure per-wedding config is persisted for guest isolation
+    try { await saveWedding(config); } catch { /* ignore */ }
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -105,10 +119,10 @@ export default function QRPage() {
     ctx.font = `${Math.round(cardW * 0.02)}px ${getFontStack(f.body)}`;
     ctx.fillText(config.venue, cardW / 2, cardH * 0.245);
 
-    // QR Code
+    // QR Code — private per-wedding link
     const qrSize = cardW * 0.38;
     const qrCanvas = document.createElement("canvas");
-    await QRCode.toCanvas(qrCanvas, PRODUCTION_URL, {
+    await QRCode.toCanvas(qrCanvas, weddingUrl, {
       width: qrSize,
       margin: 0,
       color: { dark: c.navy, light: "#00000000" },
@@ -133,11 +147,11 @@ export default function QRPage() {
     ctx.fillStyle = c.navy;
     const footerLines = [
       "Scan with your phone camera",
-      "to capture disposable photos",
-      "& voice guestbook notes.",
+      "to capture photos + leave a note",
+      `for ${config.coupleNames}.`,
       "",
       "No app download required —",
-      "photos sync live to the couple's private album.",
+      "photos stay private to this wedding.",
     ];
     const footerStartY = cardH * 0.78;
     for (let i = 0; i < footerLines.length; i++) {
@@ -177,8 +191,31 @@ export default function QRPage() {
 
       <div className="flex-1 flex flex-col items-center px-6 py-8 gap-6">
         <p className="font-body text-sm text-floral-slate text-center max-w-sm">
-          Generate printable 5×7 table cards with QR codes for your reception tables.
+          Each card links to your private wedding — <span className="text-navy font-medium">/{config.slug}</span> is isolated from any other couple.
         </p>
+
+        <div className="w-full max-w-sm bg-white rounded-xl border border-parchment p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-body text-[11px] text-floral-slate truncate">{weddingUrl}</p>
+            <button onClick={() => handleCopy(weddingUrl)} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-parchment text-navy font-body text-xs hover:bg-parchment/20 transition-colors">
+              {copied ? <Check className="w-3.5 h-3.5 text-floral-slate" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <a href={weddingUrl} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-navy/5 border border-navy/10 text-navy font-body text-xs hover:bg-navy/10 transition-colors">
+              <ExternalLink className="w-3.5 h-3.5" />
+              Test guest link
+            </a>
+            <button onClick={() => handleCopy(liveUrl)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-parchment text-floral-slate font-body text-xs hover:bg-parchment/20 transition-colors">
+              <Copy className="w-3.5 h-3.5" />
+              Copy live wall
+            </button>
+          </div>
+          <p className="font-body text-[10px] text-parchment">
+            Guests never see onboarding or your Drive link. Update colors/fonts and regenerate — QR stays the same.
+          </p>
+        </div>
 
         <div className="w-full max-w-[280px] bg-white rounded-xl shadow-lg shadow-navy/8 border border-parchment overflow-hidden">
           <canvas ref={canvasRef} className="w-full h-auto" />

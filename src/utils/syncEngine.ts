@@ -4,13 +4,16 @@ import { getWeddingConfig } from "../config/wedding.config";
 export interface PhotoRecord {
   id: string;
   imageBase64: string;
-  audioBase64?: string;
-  audioMimeType?: string;
   transcript?: string;
   phaseName: string;
+  weddingSlug?: string;
   status: "pending" | "uploading" | "synced" | "failed";
   timestamp: number;
   retries: number;
+  nextAttemptAt?: number;
+  // legacy — kept for reading old queue entries, not written for new photos
+  audioBase64?: string;
+  audioMimeType?: string;
 }
 
 const QUEUE_KEY = "wedding-photo-queue";
@@ -83,14 +86,19 @@ export async function purgeSynced(): Promise<void> {
   }
 }
 
+let inMemorySyncing = false;
+
 async function processQueue() {
+  if (inMemorySyncing) return;
   const isAlreadySyncing = await get<boolean>(SYNC_KEY);
   if (isAlreadySyncing) return;
+  inMemorySyncing = true;
   await set(SYNC_KEY, true);
 
   try {
     const queue = await getQueue();
-    const pending = queue.filter((r) => r.status === "pending");
+    const now = Date.now();
+    const pending = queue.filter((r) => r.status === "pending" && (!r.nextAttemptAt || r.nextAttemptAt <= now));
 
     for (const record of pending) {
       if (!navigator.onLine) break;
@@ -100,16 +108,19 @@ async function processQueue() {
       await emitChange();
 
       try {
-        const endpoint = getWeddingConfig().gasEndpoint;
-        if (!endpoint) throw new Error("No GAS endpoint configured");
+        const cfg = getWeddingConfig();
+        const endpoint = record.weddingSlug
+          ? cfg.gasEndpoint // per-wedding endpoint is same deployment; slug is folder key — keep simple for now
+          : cfg.gasEndpoint;
+        if (!endpoint) throw new Error("No sync endpoint configured");
 
-        const payload = {
+        const payload: Record<string, string> = {
           image: record.imageBase64,
-          audio: record.audioBase64 ?? "",
-          audioMimeType: record.audioMimeType ?? "audio/webm",
           transcript: record.transcript ?? "",
           phaseName: record.phaseName,
+          weddingSlug: record.weddingSlug ?? cfg.slug ?? "",
         };
+        if (cfg.gasToken) payload.token = cfg.gasToken;
 
         const resp = await fetch(endpoint, {
           method: "POST",
@@ -118,12 +129,20 @@ async function processQueue() {
         });
 
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const body = await resp.json().catch(() => ({ status: "success" }));
+        if (body.status === "error") throw new Error(body.message || "Upload rejected");
 
         record.status = "synced";
+        record.nextAttemptAt = undefined;
       } catch (err) {
         record.retries += 1;
         if (record.retries >= 5) {
           record.status = "failed";
+        } else {
+          record.status = "pending";
+          const jitter = Math.random() * 1000;
+          const delay = Math.pow(2, record.retries) * 1000 + jitter;
+          record.nextAttemptAt = Date.now() + delay;
         }
         console.error("Upload failed:", err);
       }
@@ -133,12 +152,13 @@ async function processQueue() {
     }
   } finally {
     await set(SYNC_KEY, false);
+    inMemorySyncing = false;
   }
 }
 
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
-    processQueue();
+    void processQueue();
   });
 }
 
