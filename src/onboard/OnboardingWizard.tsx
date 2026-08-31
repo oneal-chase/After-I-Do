@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import AccountStep from "./steps/AccountStep";
 import WelcomeStep from "./steps/WelcomeStep";
 import ColorStep from "./steps/ColorStep";
 import FontStep from "./steps/FontStep";
@@ -13,15 +14,17 @@ const STEPS = [
   { id: "fonts", label: "Fonts" },
   { id: "images", label: "Images" },
   { id: "timeline", label: "Timeline" },
+  { id: "account", label: "Account" },
   { id: "preview", label: "Launch" },
 ] as const;
 
 interface OnboardingWizardProps {
-  onComplete: () => void;
+  onComplete: (account: { email: string; password: string } | null) => void;
 }
 
 export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const [step, setStep] = useState(0);
+  const [account, setAccount] = useState<{ email: string; password: string } | null>(null);
 
   const next = useCallback(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), []);
   const prev = useCallback(() => setStep((s) => Math.max(s - 1, 0)), []);
@@ -66,7 +69,8 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
         {step === 2 && <FontStep />}
         {step === 3 && <ImageStep />}
         {step === 4 && <TimelineStep />}
-        {step === 5 && <PreviewStep />}
+        {step === 5 && <AccountStep onValue={setAccount} />}
+        {step === 6 && <PreviewStep />}
       </div>
 
       {/* Navigation */}
@@ -83,14 +87,15 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
         {!isLast ? (
           <button
             onClick={next}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-navy text-cream font-body text-sm font-semibold hover:bg-navy/90 transition-colors"
+            disabled={step === 5 && (!account?.email || !account?.password)}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-navy text-cream font-body text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Next
             <ArrowRight className="w-4 h-4" />
           </button>
         ) : (
           <button
-            onClick={onComplete}
+            onClick={() => onComplete(account)}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gold text-navy font-body text-sm font-semibold hover:bg-gold/90 transition-colors"
           >
             <Check className="w-4 h-4" />

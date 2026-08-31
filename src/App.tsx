@@ -1,6 +1,10 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RequireOnboarding from "./components/RequireOnboarding";
+import RequireAuth from "./components/RequireAuth";
+import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
 import HomePage from "./pages/HomePage";
 import CameraPage from "./pages/CameraPage";
 import LiveWall from "./pages/LiveWall";
@@ -14,11 +18,20 @@ export default function App() {
     <ErrorBoundary>
       <RequireOnboarding>
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/camera" element={<CameraPage />} />
-          <Route path="/live" element={<LiveWall />} />
-          <Route path="/qr" element={<QRPage />} />
+          {/* Public landing — no default couple, couple login entry */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+
+          {/* Couple admin — auth-gated, can start live wall */}
+          <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
           <Route path="/onboard" element={<OnboardPage />} />
+          {/* Owner preview routes (also auth-gated via RequireAuth if you prefer) */}
+          <Route path="/camera" element={<RequireAuth><CameraPage /></RequireAuth>} />
+          <Route path="/live" element={<LiveWall />} />
+          <Route path="/qr" element={<RequireAuth><QRPage /></RequireAuth>} />
+          <Route path="/home" element={<HomePage />} />
+
+          {/* Guest — visually unchanged, private per-wedding link, no auth */}
           <Route path="/w/:slug" element={<GuestSplashPage />} />
           <Route path="/w/:slug/camera" element={<GuestCameraPage />} />
           <Route path="/w/:slug/live" element={<LiveWall />} />

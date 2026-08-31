@@ -16,6 +16,9 @@ export default function RequireOnboarding({ children }: { children: React.ReactN
   const location = useLocation();
 
   if (
+    location.pathname === "/" ||
+    location.pathname === "/login" ||
+    location.pathname === "/dashboard" ||
     location.pathname === "/onboard" ||
     location.pathname === "/live" ||
     location.pathname.startsWith("/w/")
