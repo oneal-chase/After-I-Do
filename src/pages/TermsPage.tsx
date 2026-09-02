@@ -41,7 +41,7 @@ export default function TermsPage() {
             <section>
               <h2 className="font-display text-base text-navy mb-2">3. Your content</h2>
               <p>
-                You and your guests own the photos and notes you submit. You grant After I Do a limited license to store, display (live wall), and deliver them for your wedding. You represent you have permission to share any photo (especially of guests). You can delete weddings/photos via the Dashboard or by emailing <a href="mailto:privacy@afterido.co" className="underline decoration-parchment hover:text-navy">privacy@afterido.co</a>.
+                You and your guests own the photos and notes you submit. You grant After I Do a limited license to store, display (live wall), and deliver them for your wedding. You represent you have permission to share any photo (especially of guests). You can delete weddings/photos via the Dashboard or by emailing <a href="mailto:oneal.chase95@gmail.com" className="underline decoration-parchment hover:text-navy">oneal.chase95@gmail.com</a>.
               </p>
             </section>
 
@@ -85,7 +85,7 @@ export default function TermsPage() {
             <section>
               <h2 className="font-display text-base text-navy mb-2">10. Contact</h2>
               <p>
-                After I Do — <a href="mailto:privacy@afterido.co" className="underline decoration-parchment hover:text-navy">privacy@afterido.co</a>
+                After I Do — <a href="mailto:oneal.chase95@gmail.com" className="underline decoration-parchment hover:text-navy">oneal.chase95@gmail.com</a>
               </p>
             </section>
 
@@ -96,7 +96,7 @@ export default function TermsPage() {
         </div>
 
         <p className="font-body text-[11px] text-parchment text-center mt-6">
-          <Link to="/privacy" className="underline decoration-parchment hover:text-navy">Privacy Policy</Link> · Questions? <a href="mailto:privacy@afterido.co" className="underline decoration-parchment hover:text-navy">privacy@afterido.co</a>
+          <Link to="/privacy" className="underline decoration-parchment hover:text-navy">Privacy Policy</Link> · Questions? <a href="mailto:oneal.chase95@gmail.com" className="underline decoration-parchment hover:text-navy">oneal.chase95@gmail.com</a>
         </p>
       </div>
     </div>

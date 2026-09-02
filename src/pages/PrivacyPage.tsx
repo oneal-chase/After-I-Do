@@ -32,7 +32,7 @@ export default function PrivacyPage() {
               <h2 className="font-display text-base text-navy mb-2">1. Who we are</h2>
               <p>
                 This service is operated by <span className="text-navy font-medium">After I Do</span>. Contact:{" "}
-                <a href="mailto:privacy@afterido.co" className="underline decoration-parchment underline-offset-4 hover:text-navy">privacy@afterido.co</a>.
+                <a href="mailto:oneal.chase95@gmail.com" className="underline decoration-parchment underline-offset-4 hover:text-navy">oneal.chase95@gmail.com</a>.
                 If you are in the EU/UK, After I Do is the data controller for couple accounts and wedding content.
               </p>
             </section>
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="font-display text-base text-navy mb-2">6. Retention</h2>
               <p>
-                Wedding config and photos are kept until you delete them in the Dashboard or request deletion at <a href="mailto:privacy@afterido.co" className="underline decoration-parchment hover:text-navy">privacy@afterido.co</a>. Local browser data can be cleared by clearing site data. Backups rotate per Supabase retention.
+                Wedding config and photos are kept until you delete them in the Dashboard or request deletion at <a href="mailto:oneal.chase95@gmail.com" className="underline decoration-parchment hover:text-navy">oneal.chase95@gmail.com</a>. Local browser data can be cleared by clearing site data. Backups rotate per Supabase retention.
               </p>
             </section>
 
@@ -105,7 +105,7 @@ export default function PrivacyPage() {
         </div>
 
         <p className="font-body text-[11px] text-parchment text-center mt-6">
-          Questions? <a href="mailto:privacy@afterido.co" className="underline decoration-parchment hover:text-navy">privacy@afterido.co</a> · <Link to="/terms" className="underline decoration-parchment hover:text-navy">Terms of Service</Link>
+          Questions? <a href="mailto:oneal.chase95@gmail.com" className="underline decoration-parchment hover:text-navy">oneal.chase95@gmail.com</a> · <Link to="/terms" className="underline decoration-parchment hover:text-navy">Terms of Service</Link>
         </p>
       </div>
     </div>
