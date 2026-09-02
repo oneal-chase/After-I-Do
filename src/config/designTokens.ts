@@ -284,8 +284,17 @@ export function makeWeddingId(slugBase: string): string {
   return `${slugBase || "wedding"}-${rand}`;
 }
 
+function normalizeSiteUrl(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim().replace(/\/$/, "");
+  if (!trimmed) return undefined;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // bare domain like after-i-do.app -> https://after-i-do.app
+  return `https://${trimmed}`;
+}
+
 export function getWeddingUrl(slug: string, path: string = "/camera"): string {
-  const base = (import.meta.env.VITE_SITE_URL as string | undefined) || window.location.origin;
+  const base = normalizeSiteUrl(import.meta.env.VITE_SITE_URL as string | undefined) || window.location.origin;
   const cleanSlug = slugify(slug);
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return `${base.replace(/\/$/, "")}/w/${cleanSlug}${cleanPath}`;
