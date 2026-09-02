@@ -17,6 +17,7 @@ export default function RequireOnboarding({ children }: { children: React.ReactN
 
   if (
     location.pathname === "/" ||
+    location.pathname === "/how-it-works" ||
     location.pathname === "/login" ||
     location.pathname === "/forgot-password" ||
     location.pathname === "/reset-password" ||

@@ -6,6 +6,7 @@ import ColorStep from "./steps/ColorStep";
 import FontStep from "./steps/FontStep";
 import ImageStep from "./steps/ImageStep";
 import TimelineStep from "./steps/TimelineStep";
+import DriveStep from "./steps/DriveStep";
 import PreviewStep from "./steps/PreviewStep";
 
 const STEPS = [
@@ -14,6 +15,7 @@ const STEPS = [
   { id: "fonts", label: "Fonts" },
   { id: "images", label: "Images" },
   { id: "timeline", label: "Timeline" },
+  { id: "drive", label: "Drive" },
   { id: "account", label: "Account" },
   { id: "preview", label: "Launch" },
 ] as const;
@@ -69,8 +71,9 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
         {step === 2 && <FontStep />}
         {step === 3 && <ImageStep />}
         {step === 4 && <TimelineStep />}
-        {step === 5 && <AccountStep onValue={setAccount} />}
-        {step === 6 && <PreviewStep />}
+        {step === 5 && <DriveStep />}
+        {step === 6 && <AccountStep onValue={setAccount} />}
+        {step === 7 && <PreviewStep />}
       </div>
 
       {/* Navigation */}
@@ -87,7 +90,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
         {!isLast ? (
           <button
             onClick={next}
-            disabled={step === 5 && (!account?.email || !account?.password)}
+            disabled={step === 6 && (!account?.email || !account?.password)}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-navy text-cream font-body text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Next

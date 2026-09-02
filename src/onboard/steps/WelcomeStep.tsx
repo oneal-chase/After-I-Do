@@ -1,6 +1,6 @@
 import { useDesignSystem } from "../../context/DesignSystemContext";
 import { generateMonogram, slugify } from "../../config/designTokens";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { saveWedding } from "../../utils/weddingStore";
 
 const TIMEZONES = [
@@ -20,7 +20,6 @@ const TIMEZONES = [
 
 export default function WelcomeStep() {
   const { config, updateConfig } = useDesignSystem();
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const handleNameChange = useCallback(
     (value: string) => {
@@ -127,40 +126,10 @@ export default function WelcomeStep() {
         </select>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setShowAdvanced((v) => !v)}
-        className="font-body text-xs text-floral-slate underline decoration-parchment underline-offset-4 hover:text-navy transition-colors"
-      >
-        {showAdvanced ? "Hide advanced" : "Advanced: sync settings"}
-      </button>
-
-      {showAdvanced && (
-        <>
-          <div>
-            <label className="block font-body text-xs font-medium text-navy mb-1.5">Photo Sync Link (advanced)</label>
-            <input
-              type="url"
-              value={config.gasEndpoint}
-              onChange={(e) => updateConfig({ gasEndpoint: e.target.value })}
-              placeholder="https://script.google.com/macros/s/.../exec"
-              className="w-full px-4 py-3 rounded-xl border border-parchment bg-cream/50 font-body text-sm text-navy focus:outline-none focus:border-gold transition-colors"
-            />
-            <p className="font-body text-[10px] text-parchment mt-1">Auto-filled from VITE_GAS_WEBHOOK_URL — override only if needed.</p>
-          </div>
-          <div>
-            <label className="block font-body text-xs font-medium text-navy mb-1.5">Sync Secret (optional)</label>
-            <input
-              type="password"
-              value={config.gasToken}
-              onChange={(e) => updateConfig({ gasToken: e.target.value })}
-              placeholder="Shared secret if your script requires one"
-              className="w-full px-4 py-3 rounded-xl border border-parchment bg-cream/50 font-body text-sm text-navy focus:outline-none focus:border-gold transition-colors"
-            />
-            <p className="font-body text-[10px] text-parchment mt-1">Set VITE_GAS_TOKEN in your Apps Script if you use this.</p>
-          </div>
-        </>
-      )}
+      <div className="p-3 rounded-xl border border-gold/20 bg-gold/5">
+        <p className="font-body text-xs font-medium text-navy">Next: colors, fonts, then Drive</p>
+        <p className="font-body text-xs text-floral-slate mt-1">We’ll ask you to connect Google Drive in a dedicated step — no links to paste.</p>
+      </div>
     </div>
   );
 }

@@ -4,8 +4,8 @@
   "description": "Capture moments & leave voice toasts for Kendra & Diego",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FBF8F3",
-  "theme_color": "#1E2D3D",
+  "background_color": "#FAF7F2",
+  "theme_color": "#1A2530",
   "orientation": "portrait",
   "icons": [
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }

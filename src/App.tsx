@@ -14,6 +14,7 @@ import QRPage from "./pages/QRPage";
 import OnboardPage from "./pages/OnboardPage";
 import GuestSplashPage from "./pages/GuestSplashPage";
 import GuestCameraPage from "./pages/GuestCameraPage";
+import HowItWorksPage from "./pages/HowItWorksPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 
@@ -24,6 +25,7 @@ export default function App() {
         <Routes>
           {/* Public */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/how-it-works" element={<HowItWorksPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />

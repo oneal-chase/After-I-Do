@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-cream: #fbf8f3;
-  --color-navy: #1e2d3d;
-  --color-floral-slate: #5b7b94;
+  --color-cream: #FAF7F2;
+  --color-navy: #1A2530;
+  --color-floral-slate: #2C3E50;
   --color-mauve: #c59b9b;
-  --color-gold: #c2a676;
+  --color-gold: #C5A059;
   --color-parchment: #e8dec8;
 
   --font-script: "Pinyon Script", "Great Vibes", cursive;
-  --font-display: "Cinzel", "Cormorant Garamond", serif;
-  --font-body: "Montserrat", "Inter", sans-serif;
+  --font-display: "Cormorant Garamond", "Cinzel", serif;
+  --font-body: "Plus Jakarta Sans", "Inter", sans-serif;
 }
 
 html,

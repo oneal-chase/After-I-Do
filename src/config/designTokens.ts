@@ -54,11 +54,11 @@ export interface WeddingConfig {
 export const STORAGE_KEY = "wedding-config";
 
 export const DEFAULT_COLORS: ColorTokens = {
-  cream: "#FBF8F3",
-  navy: "#1E2D3D",
-  floralSlate: "#5B7B94",
+  cream: "#FAF7F2", // Soft Cream
+  navy: "#1A2530", // Midnight Ink
+  floralSlate: "#2C3E50", // Deep Slate
   mauve: "#C59B9B",
-  gold: "#C2A676",
+  gold: "#C5A059", // Champagne Gold
   parchment: "#E8DEC8",
 };
 
@@ -130,16 +130,22 @@ export const DISPLAY_FONT_OPTIONS: FontDef[] = [
 
 export const BODY_FONT_OPTIONS: FontDef[] = [
   {
-    name: "Montserrat",
-    googleName: "Montserrat",
+    name: "Plus Jakarta Sans",
+    googleName: "Plus+Jakarta+Sans",
     fallback: "Inter",
-    stack: '"Montserrat", "Inter", sans-serif',
+    stack: '"Plus Jakarta Sans", "Inter", sans-serif',
   },
   {
     name: "Inter",
     googleName: "Inter",
     fallback: "Montserrat",
     stack: '"Inter", "Montserrat", sans-serif',
+  },
+  {
+    name: "Montserrat",
+    googleName: "Montserrat",
+    fallback: "Inter",
+    stack: '"Montserrat", "Inter", sans-serif',
   },
   {
     name: "Lato",
@@ -259,8 +265,8 @@ export const PALETTE_PRESETS: PalettePreset[] = [
 
 export const DEFAULT_FONTS: FontTokens = {
   script: "Pinyon Script",
-  display: "Cinzel",
-  body: "Montserrat",
+  display: "Cormorant Garamond",
+  body: "Plus Jakarta Sans",
 };
 
 export const DEFAULT_TIMELINE = [
