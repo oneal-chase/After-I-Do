@@ -146,9 +146,15 @@ export default function LiveWall() {
       </div>
 
       {feed.length === 0 ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
           <div className="font-script text-3xl text-gold/60">{config.coupleNames}</div>
           <p className="font-body text-sm text-cream/40">Waiting for guest photos…</p>
+          <p className="font-body text-[11px] text-cream/25">Wall is live for <span className="font-mono text-cream/40">/w/{weddingSlug}</span> · {isSupabaseConfigured ? "Supabase Realtime" : "GAS poll"}</p>
+          {!isSupabaseConfigured && !config.gasEndpoint && (
+            <p className="font-body text-xs text-mauve bg-mauve/10 border border-mauve/20 rounded-xl px-4 py-2 mt-2">
+              No sync endpoint configured. Connect Supabase or set VITE_GAS_WEBHOOK_URL.
+            </p>
+          )}
           <div className="w-8 h-8 border-2 border-cream/20 border-t-cream/50 rounded-full animate-spin mt-4" />
         </div>
       ) : (

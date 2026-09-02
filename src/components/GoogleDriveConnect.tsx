@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { HardDrive, Check, LogOut, ExternalLink } from "lucide-react";
-import { getDriveFolderId, getDriveToken, requestDriveAccess, clearDriveToken } from "../lib/googleDrive";
+import { getDriveFolderId, getDriveToken, requestDriveAccess, clearDriveToken, ensureDriveFolder, setDriveFolderId } from "../lib/googleDrive";
+import { useDesignSystem } from "../context/DesignSystemContext";
 
 const hasClientId = Boolean((import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim());
 
 export default function GoogleDriveConnect() {
+  const { config } = useDesignSystem();
   const [connected, setConnected] = useState(false);
   const [folderId, setFolderId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,7 +23,15 @@ export default function GoogleDriveConnect() {
     setError(null);
     setBusy(true);
     try {
-      await requestDriveAccess();
+      const token = await requestDriveAccess();
+      // Immediately create Wedding Capture / slug so user sees folder without taking a photo first
+      try {
+        const appRoot = await ensureDriveFolder(token, "Wedding Capture");
+        const weddingFolder = await ensureDriveFolder(token, config.slug, appRoot);
+        setDriveFolderId(weddingFolder);
+      } catch (e) {
+        console.warn("Drive folder pre-create failed (will retry on first upload):", e);
+      }
       refresh();
     } catch (e) {
       setError((e as Error).message);

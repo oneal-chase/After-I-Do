@@ -114,26 +114,47 @@ async function processQueue() {
         const weddingSlug = record.weddingSlug ?? cfg.slug ?? "";
 
         // Helper: last-resort direct upload to Supabase Storage + photos row (so live wall always works even if Drive/Edge fails)
+        // If bucket is missing (404 NoSuchBucket), we still insert the photo as a data URL so the wall isn't empty.
         const fallbackToStorage = async (): Promise<{ imageUrl: string; fileId: string }> => {
           if (!isSupabaseConfigured) throw new Error("No Supabase configured for storage fallback");
           const { supabase } = await import("../lib/supabase");
           if (!supabase) throw new Error("Supabase client missing");
-          const b64 = record.imageBase64.includes(",") ? record.imageBase64.split(",")[1] : record.imageBase64;
-          const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
           const path = `${weddingSlug}/${record.phaseName || "00_General"}/PHOTO_${Date.now()}_${record.id.slice(0, 6)}.jpg`;
-          const { error: upErr } = await supabase.storage.from("wedding-photos").upload(path, bytes, { contentType: "image/jpeg", upsert: false });
-          if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`);
-          const { data: pub } = supabase.storage.from("wedding-photos").getPublicUrl(path);
-          const imageUrl = pub.publicUrl;
-          const { error: insErr } = await supabase.from("photos").insert({
-            wedding_slug: weddingSlug,
-            phase: record.phaseName,
-            image_url: imageUrl,
-            transcript: (record.transcript || "").slice(0, 280),
-            file_id: path,
-          });
-          if (insErr) console.error("photos insert failed:", insErr);
-          return { imageUrl, fileId: path };
+          try {
+            const b64 = record.imageBase64.includes(",") ? record.imageBase64.split(",")[1] : record.imageBase64;
+            const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+            const { error: upErr } = await supabase.storage.from("wedding-photos").upload(path, bytes, { contentType: "image/jpeg", upsert: false });
+            if (upErr) throw upErr;
+            const { data: pub } = supabase.storage.from("wedding-photos").getPublicUrl(path);
+            const imageUrl = pub.publicUrl;
+            const { error: insErr } = await supabase.from("photos").insert({
+              wedding_slug: weddingSlug,
+              phase: record.phaseName,
+              image_url: imageUrl,
+              transcript: (record.transcript || "").slice(0, 280),
+              file_id: path,
+            });
+            if (insErr) throw insErr;
+            return { imageUrl, fileId: path };
+          } catch (e) {
+            const msg = (e as Error).message || String(e);
+            const isBucketMissing = msg.includes("Bucket not found") || msg.includes("NoSuchBucket");
+            if (isBucketMissing) {
+              console.warn("Storage bucket missing — inserting photo as data URL for live wall. Create bucket wedding-photos in Supabase Storage to use URLs:", e);
+              // Fallback: store the image as a data URL directly (works for < ~1MB stamped photos; wall will show it)
+              const dataUrl = record.imageBase64.startsWith("data:") ? record.imageBase64 : `data:image/jpeg;base64,${record.imageBase64}`;
+              const { error: insErr2 } = await supabase.from("photos").insert({
+                wedding_slug: weddingSlug,
+                phase: record.phaseName,
+                image_url: dataUrl,
+                transcript: (record.transcript || "").slice(0, 280),
+                file_id: `data-url:${record.id}`,
+              });
+              if (insErr2) throw insErr2;
+              return { imageUrl: dataUrl, fileId: `data-url:${record.id}` };
+            }
+            throw e;
+          }
         };
 
         // 1) If couple connected Drive via one-click OAuth (non-technical happy path), upload directly to Drive
