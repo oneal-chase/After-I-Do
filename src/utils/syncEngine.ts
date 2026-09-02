@@ -113,56 +113,94 @@ async function processQueue() {
         const cfg = getWeddingConfig();
         const weddingSlug = record.weddingSlug ?? cfg.slug ?? "";
 
+        // Helper: last-resort direct upload to Supabase Storage + photos row (so live wall always works even if Drive/Edge fails)
+        const fallbackToStorage = async (): Promise<{ imageUrl: string; fileId: string }> => {
+          if (!isSupabaseConfigured) throw new Error("No Supabase configured for storage fallback");
+          const { supabase } = await import("../lib/supabase");
+          if (!supabase) throw new Error("Supabase client missing");
+          const b64 = record.imageBase64.includes(",") ? record.imageBase64.split(",")[1] : record.imageBase64;
+          const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+          const path = `${weddingSlug}/${record.phaseName || "00_General"}/PHOTO_${Date.now()}_${record.id.slice(0, 6)}.jpg`;
+          const { error: upErr } = await supabase.storage.from("wedding-photos").upload(path, bytes, { contentType: "image/jpeg", upsert: false });
+          if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`);
+          const { data: pub } = supabase.storage.from("wedding-photos").getPublicUrl(path);
+          const imageUrl = pub.publicUrl;
+          const { error: insErr } = await supabase.from("photos").insert({
+            wedding_slug: weddingSlug,
+            phase: record.phaseName,
+            image_url: imageUrl,
+            transcript: (record.transcript || "").slice(0, 280),
+            file_id: path,
+          });
+          if (insErr) console.error("photos insert failed:", insErr);
+          return { imageUrl, fileId: path };
+        };
+
         // 1) If couple connected Drive via one-click OAuth (non-technical happy path), upload directly to Drive
-        //    and just insert metadata to Supabase — no service account, no GAS, no folder ID typing.
         const driveToken = getDriveToken();
         if (driveToken) {
-          const { fileId, imageUrl } = await uploadImageToDrive({
-            token: driveToken.token,
-            weddingSlug,
-            phaseName: record.phaseName,
-            imageBase64: record.imageBase64,
-          });
-          // still record in Supabase for live wall (single DB)
-          if (isSupabaseConfigured) {
-            try {
-              const { supabase } = await import("../lib/supabase");
-              if (supabase) {
-                await supabase.from("photos").insert({
-                  wedding_slug: weddingSlug,
-                  phase: record.phaseName,
-                  image_url: imageUrl,
-                  transcript: (record.transcript || "").slice(0, 280),
-                  file_id: fileId,
-                });
-              }
-            } catch { /* non-fatal */ }
-          }
-          record.status = "synced";
-          record.nextAttemptAt = undefined;
-        } else if (isSupabaseConfigured) {
-          const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-photo`;
-          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-          const resp = await fetch(url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: anonKey,
-              Authorization: `Bearer ${anonKey}`,
-            },
-            body: JSON.stringify({
-              image: record.imageBase64,
-              transcript: record.transcript ?? "",
-              phaseName: record.phaseName,
+          try {
+            const { fileId, imageUrl } = await uploadImageToDrive({
+              token: driveToken.token,
               weddingSlug,
-              token: cfg.gasToken || undefined,
-            }),
-          });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const body = await resp.json().catch(() => ({ status: "success" }));
-          if (body.status === "error") throw new Error(body.message || "Upload rejected");
-          record.status = "synced";
-          record.nextAttemptAt = undefined;
+              phaseName: record.phaseName,
+              imageBase64: record.imageBase64,
+            });
+            if (isSupabaseConfigured) {
+              try {
+                const { supabase } = await import("../lib/supabase");
+                if (supabase) {
+                  await supabase.from("photos").insert({
+                    wedding_slug: weddingSlug,
+                    phase: record.phaseName,
+                    image_url: imageUrl,
+                    transcript: (record.transcript || "").slice(0, 280),
+                    file_id: fileId,
+                  });
+                }
+              } catch { /* non-fatal */ }
+            }
+            record.status = "synced";
+            record.nextAttemptAt = undefined;
+          } catch (driveErr) {
+            console.warn("Drive direct upload failed, falling back to Supabase Storage:", driveErr);
+            // fallback so live wall still works even if Drive token expired/revoked
+            const { imageUrl } = await fallbackToStorage();
+            console.warn("Fallback Storage succeeded:", imageUrl);
+            record.status = "synced";
+            record.nextAttemptAt = undefined;
+          }
+        } else if (isSupabaseConfigured) {
+          // Try Edge Function (does Drive server-side if service account configured, else Storage)
+          try {
+            const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-photo`;
+            const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+            const resp = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: anonKey,
+                Authorization: `Bearer ${anonKey}`,
+              },
+              body: JSON.stringify({
+                image: record.imageBase64,
+                transcript: record.transcript ?? "",
+                phaseName: record.phaseName,
+                weddingSlug,
+                token: cfg.gasToken || undefined,
+              }),
+            });
+            if (!resp.ok) throw new Error(`Edge Function HTTP ${resp.status}`);
+            const body = await resp.json().catch(() => ({ status: "success" }));
+            if (body.status === "error") throw new Error(body.message || "Upload rejected");
+            record.status = "synced";
+            record.nextAttemptAt = undefined;
+          } catch (edgeErr) {
+            console.warn("Edge Function failed, falling back to direct Storage:", edgeErr);
+            await fallbackToStorage();
+            record.status = "synced";
+            record.nextAttemptAt = undefined;
+          }
         } else {
           const endpoint = cfg.gasEndpoint;
           if (!endpoint) throw new Error("No sync endpoint configured (set VITE_SUPABASE_URL or VITE_GAS_WEBHOOK_URL)");
