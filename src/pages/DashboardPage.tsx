@@ -42,9 +42,12 @@ export default function DashboardPage() {
   return (
     <div className="min-h-dvh flex flex-col bg-cream">
       <header className="flex items-center justify-between px-6 py-4 border-b border-parchment bg-white/50 backdrop-blur-sm">
-        <div>
-          <p className="font-display text-sm font-semibold text-navy">{config.coupleNames}</p>
-          <p className="font-body text-xs text-floral-slate">/w/{slug} · {user.email}</p>
+        <div className="flex items-center gap-3">
+          <img src="/favicon.svg" alt="After I Do" className="w-8 h-8" />
+          <div>
+            <p className="font-display text-sm font-semibold text-navy">{config.coupleNames}</p>
+            <p className="font-body text-xs text-floral-slate">/w/{slug} · {user.email}</p>
+          </div>
         </div>
         <button onClick={() => { logout(); navigate("/"); }} className="flex items-center gap-2 px-3 py-2 rounded-full border border-parchment text-navy font-body text-xs hover:bg-parchment/20 transition-colors">
           <LogOut className="w-3.5 h-3.5" />

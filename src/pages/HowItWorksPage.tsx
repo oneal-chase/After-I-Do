@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Sparkles, QrCode, Camera, MonitorPlay } from "lucide-react";
+import { ArrowRight, Sparkles, QrCode, MonitorPlay } from "lucide-react";
 import Footer from "../components/Footer";
 
 export default function HowItWorksPage() {
@@ -20,10 +20,8 @@ export default function HowItWorksPage() {
     <div className="min-h-dvh flex flex-col bg-cream">
       <header className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto w-full">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-navy flex items-center justify-center">
-            <Camera className="w-4 h-4 text-cream" />
-          </div>
-          <span className="font-display text-sm font-semibold text-navy tracking-wide">After I Do</span>
+          <img src="/after-i-do-logo.svg" alt="After I Do" className="h-8 w-auto" />
+          <span className="hidden sm:inline font-display text-sm font-semibold text-navy tracking-wide">After I Do</span>
         </Link>
         <Link to="/onboard" className="px-5 py-2.5 rounded-full bg-navy text-cream font-body text-sm font-medium hover:bg-navy/90 transition-colors">
           Start Your Gallery

@@ -1,13 +1,14 @@
 {
-  "name": "Kendra & Diego Wedding",
-  "short_name": "K&D Wedding",
-  "description": "Capture moments & leave voice toasts for Kendra & Diego",
+  "name": "After I Do — Candid Moments. Shared.",
+  "short_name": "After I Do",
+  "description": "Private wedding photo sharing — full-resolution, app-free, live wall.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FAF7F2",
   "theme_color": "#1A2530",
   "orientation": "portrait",
   "icons": [
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/after-i-do-logo.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
 }

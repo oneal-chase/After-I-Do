@@ -23,10 +23,8 @@ export default function LandingPage() {
     <div className="min-h-dvh flex flex-col bg-cream">
       <header className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto w-full">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-navy flex items-center justify-center">
-            <Camera className="w-4 h-4 text-cream" />
-          </div>
-          <span className="font-display text-sm font-semibold text-navy tracking-wide">After I Do</span>
+          <img src="/after-i-do-logo.svg" alt="After I Do" className="h-8 w-auto" />
+          <span className="hidden sm:inline font-display text-sm font-semibold text-navy tracking-wide">After I Do</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6">
           <Link to="/how-it-works" className="font-body text-sm text-floral-slate hover:text-navy transition-colors">
@@ -52,6 +50,7 @@ export default function LandingPage() {
         {/* Hero — Conversion Engine */}
         <section className="px-6 py-16 md:py-24 text-center bg-cream">
           <div className="max-w-3xl mx-auto flex flex-col items-center">
+            <img src="/after-i-do-logo.svg" alt="After I Do — interlocking rings heart aperture" className="w-[280px] md:w-[360px] h-auto mb-6" />
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gold/10 border border-gold/20 mb-6">
               <Sparkles className="w-3.5 h-3.5 text-gold" />
               <span className="font-body text-xs font-medium text-navy tracking-widest uppercase">Private · App-Free · Full-Resolution</span>
