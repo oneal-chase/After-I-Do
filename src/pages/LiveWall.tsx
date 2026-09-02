@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { QrCode } from "lucide-react";
+import { QrCode, Maximize, Minimize } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useDesignSystem } from "../context/DesignSystemContext";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
@@ -114,10 +114,31 @@ export default function LiveWall() {
     return () => clearInterval(cycle);
   }, [feed]);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const wallRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement && wallRef.current) {
+        await wallRef.current.requestFullscreen();
+      } else if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error("Fullscreen failed:", err);
+    }
+  }, []);
+
   const currentItem = feed[currentIndex];
 
   return (
-    <div className="fixed inset-0 bg-navy overflow-hidden">
+    <div ref={wallRef} className="fixed inset-0 bg-navy overflow-hidden">
       {/* Ambient glow gradients */}
       <div className="absolute inset-0">
         <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-floral-slate/8 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2" />
@@ -167,8 +188,15 @@ export default function LiveWall() {
             </Link>
           </div>
 
-          <div className="absolute top-6 left-6 z-10">
+          <div className="absolute top-6 left-6 z-10 flex items-center gap-3">
             <span className="font-script text-xl text-cream/30">{config.coupleNames}</span>
+            <button
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              className="p-2 rounded-full bg-navy/40 backdrop-blur-sm border border-cream/10 text-cream/70 hover:text-cream hover:bg-navy/60 transition-colors"
+            >
+              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            </button>
           </div>
         </>
       )}
