@@ -56,6 +56,19 @@ export default function DashboardPage() {
       </header>
 
       <main className="flex-1 px-6 py-8 max-w-3xl mx-auto w-full space-y-6">
+        <div className="p-4 rounded-xl border border-navy/10 bg-navy/[0.02]">
+          <p className="font-body text-xs font-semibold text-navy">Diagnostics — why Drive / wall might be empty</p>
+          <ul className="font-body text-[11px] text-floral-slate mt-2 space-y-1 list-disc ml-4">
+            <li>Supabase: {typeof import.meta.env.VITE_SUPABASE_URL === "string" && (import.meta.env.VITE_SUPABASE_URL as string).trim() ? `✓ ${(import.meta.env.VITE_SUPABASE_URL as string).slice(0, 28)}…` : "❌ VITE_SUPABASE_URL not in this build — set as Variable (not Secret) in Cloudflare → Redeploy"}</li>
+            <li>Supabase key: {(import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() ? `✓ sb_publishable… (${(import.meta.env.VITE_SUPABASE_ANON_KEY as string).slice(0, 12)}…)` : "❌ VITE_SUPABASE_ANON_KEY missing — add as Variable"}</li>
+            <li>Google Client ID: {(import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() ? "✓ set" : "❌ VITE_GOOGLE_CLIENT_ID missing — add as Variable for Drive"}</li>
+            <li>Site URL: {(import.meta.env.VITE_SITE_URL as string | undefined)?.trim() || "window.location.origin (fallback)"}</li>
+            <li>Drive token: {(() => { try { const t = localStorage.getItem("google-drive-token"); const exp = Number(localStorage.getItem("google-drive-token-exp") || 0); if (!t) return "— not connected (tap Connect above)"; if (exp && Date.now() > exp - 60000) return "⚠️ expired — tap Connect again"; return `✓ present, expires in ${Math.round((exp - Date.now())/60000)}m`; } catch { return "unknown"; } })()}</li>
+            <li>Drive folder: {(() => { try { return localStorage.getItem("google-drive-folder-id") ? `✓ ${localStorage.getItem("google-drive-folder-id")!.slice(0, 12)}… (My Drive / Wedding Capture / ${slug})` : "— not yet (created on Connect or first photo)"; } catch { return "unknown"; } })()}</li>
+          </ul>
+          <p className="font-body text-[11px] text-parchment mt-2">If Supabase shows ❌, photos go nowhere — set Variables then <span className="font-mono">git push</span> to redeploy. After a test photo, hard-refresh <span className="font-mono">/w/{slug}/live</span> — it polls every 10s + Realtime.</p>
+        </div>
+
         <GoogleDriveConnect />
 
         <div className="p-6 rounded-2xl border border-parchment bg-white shadow-sm">
