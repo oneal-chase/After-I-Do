@@ -10,6 +10,7 @@ export interface WeddingOwner {
 interface AuthState {
   user: WeddingOwner | null;
   login: (slug: string, password: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => void;
   register: (email: string, password: string, slug: string, weddingId: string) => Promise<void>;
   isAuthenticated: boolean;
@@ -169,6 +170,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(next));
   }, []);
 
+  const loginWithGoogle = useCallback(async () => {
+    if (!isSupabaseConfigured || !supabase) throw new Error("Google sign-in needs Supabase — set VITE_SUPABASE_URL / ANON_KEY");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+        queryParams: { access_type: "offline", prompt: "consent" },
+        // Note: drive.file is granted separately via GIS “Connect Drive” button so auth stays simple.
+        // To request it here too, add scopes: "https://www.googleapis.com/auth/drive.file"
+      },
+    });
+    if (error) throw new Error(error.message);
+  }, []);
+
   const logout = useCallback(() => {
     if (isSupabaseConfigured && supabase) void supabase.auth.signOut();
     setUser(null);
@@ -176,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, isAuthenticated: !!user, isLoaded }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, register, isAuthenticated: !!user, isLoaded }}>
       {children}
     </AuthContext.Provider>
   );

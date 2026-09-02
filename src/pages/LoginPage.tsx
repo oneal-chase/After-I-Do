@@ -2,14 +2,16 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LogIn, ArrowLeft } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { isSupabaseConfigured } from "../lib/supabase";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [slug, setSlug] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +25,17 @@ export default function LoginPage() {
     setLoading(false);
     if (ok) navigate("/dashboard");
     else setError("That link or password didn’t match. Check your QR setup or try again.");
+  };
+
+  const handleGoogle = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch (e) {
+      setError((e as Error).message);
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -39,6 +52,23 @@ export default function LoginPage() {
         <div className="w-full max-w-sm bg-white rounded-2xl border border-parchment p-6 shadow-lg shadow-navy/5">
           <h2 className="font-display text-xl text-navy mb-1">Welcome back</h2>
           <p className="font-body text-xs text-floral-slate mb-6">Log in to manage your wedding, QR, and live wall.</p>
+
+          {isSupabaseConfigured ? (
+            <button
+              onClick={handleGoogle}
+              disabled={googleLoading}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white border-2 border-parchment text-navy font-body text-sm font-semibold hover:bg-cream/50 transition-colors disabled:opacity-50"
+            >
+              {googleLoading ? <span className="w-4 h-4 border-2 border-navy/20 border-t-navy rounded-full animate-spin" /> : <span className="w-4 h-4 rounded-full bg-white border border-parchment flex items-center justify-center text-[10px]">G</span>}
+              {googleLoading ? "Redirecting…" : "Continue with Google"}
+            </button>
+          ) : null}
+
+          <div className="flex items-center gap-3 my-2">
+            <div className="h-px flex-1 bg-parchment" />
+            <span className="font-body text-[11px] text-parchment">or use wedding password</span>
+            <div className="h-px flex-1 bg-parchment" />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -74,7 +104,7 @@ export default function LoginPage() {
               className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-navy text-cream font-body text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-50"
             >
               {loading ? <span className="w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" /> : <LogIn className="w-4 h-4" />}
-              {loading ? "Checking…" : "Log in"}
+              {loading ? "Checking…" : "Log in with password"}
             </button>
           </form>
 
@@ -89,12 +119,10 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-6 p-4 rounded-xl border border-gold/20 bg-gold/5 max-w-sm">
-          <p className="font-body text-xs font-medium text-navy">Auth options (for you as owner):</p>
-          <ul className="font-body text-[11px] text-floral-slate list-disc ml-4 mt-1 space-y-1">
-            <li><span className="text-navy font-medium">Now (MVP):</span> Per-wedding password (local + best-effort GAS verify). No vendor, instant.</li>
-            <li><span className="text-navy font-medium">Next:</span> Email magic link or Supabase/Clerk — swap one file <span className="font-mono">AuthContext.tsx</span> (interface stays <span className="font-mono">login(slug,pw)</span>).</li>
-            <li><span className="text-navy font-medium">Scale:</span> Stripe + KV/D1 + JWT replaces local map, guest URLs unchanged.</li>
-          </ul>
+          <p className="font-body text-xs font-medium text-navy">How this connects to Drive</p>
+          <p className="font-body text-[11px] text-floral-slate mt-1">
+            The same Google project powers both: <span className="font-mono">VITE_GOOGLE_CLIENT_ID</span> is used for <span className="text-navy">Continue with Google</span> (Supabase Auth) and for the Dashboard’s <span className="text-navy">Connect Drive</span> (GIS <span className="font-mono">drive.file</span>). Enable Drive API once and both work.
+          </p>
         </div>
       </div>
     </div>
