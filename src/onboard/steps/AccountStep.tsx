@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useDesignSystem } from "../../context/DesignSystemContext";
 
 export default function AccountStep({ onValue }: { onValue: (v: { email: string; password: string } | null) => void }) {
@@ -6,11 +7,12 @@ export default function AccountStep({ onValue }: { onValue: (v: { email: string;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [consent, setConsent] = useState(false);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const pwValid = password.length >= 8;
   const match = password === confirm && pwValid;
-  const canProceed = emailValid && match;
+  const canProceed = emailValid && match && consent;
 
   useEffect(() => {
     onValue(canProceed ? { email: email.toLowerCase().trim(), password } : null);
@@ -64,6 +66,26 @@ export default function AccountStep({ onValue }: { onValue: (v: { email: string;
         />
         {confirm && password !== confirm && <p className="font-body text-xs text-mauve mt-1">Passwords don’t match.</p>}
       </div>
+
+      <label className="flex gap-3 items-start p-3 rounded-xl border border-parchment bg-white">
+        <input
+          type="checkbox"
+          checked={consent}
+          onChange={(e) => setConsent(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-parchment text-navy accent-navy focus:ring-gold"
+        />
+        <span className="font-body text-xs text-floral-slate leading-relaxed">
+          I agree to After I Do’s{" "}
+          <Link to="/privacy" target="_blank" className="underline decoration-parchment underline-offset-4 text-navy hover:text-floral-slate">
+            Privacy Policy
+          </Link>{" "}
+          and{" "}
+          <Link to="/terms" target="_blank" className="underline decoration-parchment underline-offset-4 text-navy hover:text-floral-slate">
+            Terms of Service
+          </Link>
+          .
+        </span>
+      </label>
 
       <div className="p-3 rounded-xl border border-gold/20 bg-gold/5">
         <p className="font-body text-xs font-medium text-navy">What this unlocks (only for you):</p>

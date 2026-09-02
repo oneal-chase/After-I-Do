@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useDesignSystem } from "../context/DesignSystemContext";
 import { getWeddingUrl } from "../config/designTokens";
 import GoogleDriveConnect from "../components/GoogleDriveConnect";
+import Footer from "../components/Footer";
 import { useState } from "react";
 
 export default function DashboardPage() {
@@ -117,6 +118,7 @@ export default function DashboardPage() {
           </p>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -96,6 +96,12 @@ export default function GuestSplashPage() {
       <p className="font-body text-[10px] text-parchment text-center mt-6">
         No app needed — works on any phone.
       </p>
+      <div className="flex items-center justify-center gap-3 mt-8">
+        <Link to="/privacy" className="font-body text-[11px] text-parchment hover:text-floral-slate transition-colors underline decoration-parchment/0 hover:decoration-parchment underline-offset-4">Privacy</Link>
+        <span className="w-1 h-1 rounded-full bg-parchment" />
+        <Link to="/terms" className="font-body text-[11px] text-parchment hover:text-floral-slate transition-colors underline decoration-parchment/0 hover:decoration-parchment underline-offset-4">Terms</Link>
+      </div>
+      <p className="font-body text-[10px] text-parchment mt-2">© {new Date().getFullYear()} After I Do</p>
     </div>
   );
 }

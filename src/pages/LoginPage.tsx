@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { LogIn, ArrowLeft } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabase";
+import Footer from "../components/Footer";
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth();
@@ -125,6 +126,7 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

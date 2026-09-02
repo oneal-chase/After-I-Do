@@ -3,6 +3,7 @@ import { Camera, Radio, QrCode, Settings } from "lucide-react";
 import { useDesignSystem } from "../context/DesignSystemContext";
 import { getCurrentPhase, getPhaseDisplayName } from "../config/wedding.config";
 import SyncHUD from "../components/SyncHUD";
+import Footer from "../components/Footer";
 
 export default function HomePage() {
   const { config } = useDesignSystem();
@@ -92,6 +93,7 @@ export default function HomePage() {
         <Settings className="w-3 h-3" />
         Customize this wedding
       </Link>
+      <Footer className="mt-8" />
     </div>
   );
 }

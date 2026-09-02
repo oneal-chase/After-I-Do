@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Camera, Sparkles, QrCode, LogIn, ArrowRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import Footer from "../components/Footer";
 
 export default function LandingPage() {
   const { isAuthenticated, user } = useAuth();
@@ -80,9 +81,7 @@ export default function LandingPage() {
         </p>
       </main>
 
-      <footer className="px-6 py-6 text-center">
-        <p className="font-body text-[11px] text-parchment">© Wedding Capture · Guest experience stays exactly as designed — only the home page changed.</p>
-      </footer>
+      <Footer />
     </div>
   );
 }

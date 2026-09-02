@@ -47,6 +47,8 @@ export interface WeddingConfig {
   }[];
   gasEndpoint: string;
   gasToken: string;
+  consentAt?: string;
+  privacyVersion?: string;
 }
 
 export const STORAGE_KEY = "wedding-config";

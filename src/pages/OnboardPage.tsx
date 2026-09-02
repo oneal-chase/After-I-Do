@@ -20,8 +20,9 @@ export default function OnboardPage() {
         return;
       }
     }
-    updateConfig({ onboardingComplete: true });
-    try { await saveWedding({ ...config, onboardingComplete: true }); } catch { /* ignore */ }
+    const consentAt = new Date().toISOString();
+    updateConfig({ onboardingComplete: true, consentAt, privacyVersion: "2025-12-11" });
+    try { await saveWedding({ ...config, onboardingComplete: true, consentAt, privacyVersion: "2025-12-11" }); } catch { /* ignore */ }
     navigate("/dashboard");
   };
 

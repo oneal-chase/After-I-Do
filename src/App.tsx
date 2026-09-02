@@ -12,15 +12,19 @@ import QRPage from "./pages/QRPage";
 import OnboardPage from "./pages/OnboardPage";
 import GuestSplashPage from "./pages/GuestSplashPage";
 import GuestCameraPage from "./pages/GuestCameraPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 
 export default function App() {
   return (
     <ErrorBoundary>
       <RequireOnboarding>
         <Routes>
-          {/* Public landing — no default couple, couple login entry */}
+          {/* Public */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
 
           {/* Couple admin — auth-gated, can start live wall */}
           <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
