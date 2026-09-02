@@ -125,6 +125,55 @@ export async function loadWedding(slug: string): Promise<WeddingConfig | null> {
   return null;
 }
 
+export async function deleteWedding(slug: string): Promise<void> {
+  const normalized = slugify(slug);
+  // local
+  try {
+    localStorage.removeItem(weddingKey(normalized));
+    const curRaw = localStorage.getItem(STORAGE_KEY);
+    if (curRaw) {
+      const cur = JSON.parse(curRaw) as WeddingConfig;
+      if (slugify(cur.slug) === normalized) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+    // owner mapping
+    const ownersRaw = localStorage.getItem("wedding-owners");
+    if (ownersRaw) {
+      const map = JSON.parse(ownersRaw) as Record<string, unknown>;
+      if (map[normalized]) {
+        delete map[normalized];
+        localStorage.setItem("wedding-owners", JSON.stringify(map));
+      }
+    }
+    const sessRaw = localStorage.getItem("wedding-session");
+    if (sessRaw) {
+      const sess = JSON.parse(sessRaw) as { slug?: string };
+      if (sess.slug && slugify(sess.slug) === normalized) {
+        localStorage.removeItem("wedding-session");
+      }
+    }
+  } catch { /* ignore */ }
+
+  // Supabase — best effort; RLS requires owner_id = auth.uid() for delete, so anon demo rows (owner_id null) need Dashboard SQL
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from("weddings").delete().eq("slug", normalized);
+      if (error) console.warn("Supabase delete failed (need owner login or run SQL in Dashboard):", error.message);
+      // also delete photos for this wedding
+      await supabase.from("photos").delete().eq("wedding_slug", normalized).then(() => {});
+      // try storage cleanup best-effort (requires service_role, ignore)
+      try {
+        const { data: files } = await supabase.storage.from("wedding-photos").list(normalized);
+        if (files?.length) {
+          const paths = files.map((f) => `${normalized}/${f.name}`);
+          await supabase.storage.from("wedding-photos").remove(paths);
+        }
+      } catch { /* ignore */ }
+    } catch { /* ignore */ }
+  }
+}
+
 export function getCurrentSlugFromPath(): string | null {
   const m = window.location.pathname.match(/^\/w\/([^/]+)/);
   return m ? slugify(m[1]) : null;

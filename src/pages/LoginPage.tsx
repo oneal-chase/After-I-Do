@@ -109,6 +109,10 @@ export default function LoginPage() {
             </button>
           </form>
 
+          <div className="mt-2 text-center">
+            <Link to="/forgot-password" className="font-body text-xs text-floral-slate underline decoration-parchment underline-offset-4 hover:text-navy">Forgot password?</Link>
+          </div>
+
           <div className="mt-6 pt-6 border-t border-parchment flex flex-col gap-2 text-center">
             <p className="font-body text-xs text-floral-slate">
               New couple? <Link to="/onboard" className="text-navy underline decoration-parchment underline-offset-4">Create your wedding</Link>

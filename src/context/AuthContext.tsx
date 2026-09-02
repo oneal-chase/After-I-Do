@@ -13,6 +13,8 @@ interface AuthState {
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
   register: (email: string, password: string, slug: string, weddingId: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
   isAuthenticated: boolean;
   isLoaded: boolean;
 }
@@ -184,6 +186,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(error.message);
   }, []);
 
+  const sendPasswordReset = useCallback(async (email: string) => {
+    if (!isSupabaseConfigured || !supabase) throw new Error("Password reset needs Supabase — set VITE_SUPABASE_URL / ANON_KEY");
+    const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw new Error(error.message);
+  }, []);
+
+  const updatePassword = useCallback(async (newPassword: string) => {
+    if (!isSupabaseConfigured || !supabase) throw new Error("Password update needs Supabase");
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw new Error(error.message);
+  }, []);
+
   const logout = useCallback(() => {
     if (isSupabaseConfigured && supabase) void supabase.auth.signOut();
     setUser(null);
@@ -191,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, register, isAuthenticated: !!user, isLoaded }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, register, sendPasswordReset, updatePassword, isAuthenticated: !!user, isLoaded }}>
       {children}
     </AuthContext.Provider>
   );

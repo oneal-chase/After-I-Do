@@ -1,10 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, QrCode, Radio, Settings, ExternalLink, Copy, Check } from "lucide-react";
+import { LogOut, QrCode, Radio, Settings, ExternalLink, Copy, Check, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useDesignSystem } from "../context/DesignSystemContext";
 import { getWeddingUrl } from "../config/designTokens";
 import GoogleDriveConnect from "../components/GoogleDriveConnect";
 import Footer from "../components/Footer";
+import { deleteWedding } from "../utils/weddingStore";
 import { useState } from "react";
 
 export default function DashboardPage() {
@@ -116,6 +117,25 @@ export default function DashboardPage() {
           <p className="font-body text-[11px] text-floral-slate mt-1">
             Tap “Connect Google Drive” once — we create <span className="font-mono">Wedding Capture / your-slug</span> automatically. Guests never touch this. If you skip, photos still appear on the live wall via secure storage (you can connect later — we’ll still save to Drive going forward). Service-account setup is no longer needed.
           </p>
+        </div>
+
+        <div className="p-4 rounded-xl border border-mauve/20 bg-mauve/5">
+          <p className="font-body text-xs font-medium text-navy">Danger zone</p>
+          <p className="font-body text-[11px] text-floral-slate mt-1">
+            Delete <span className="font-mono text-navy">/w/{slug}</span> and all its photos. This removes the wedding from Supabase + this browser. Guests with the old link will see “Wedding not found.” For demo data like <span className="font-mono">kendra-diego</span>, you can delete it here, or run in Supabase SQL Editor: <span className="font-mono">delete from public.weddings where slug='kendra-diego';</span>
+          </p>
+          <button
+            onClick={async () => {
+              if (!confirm(`Delete /w/${slug} and all photos? This cannot be undone.`)) return;
+              await deleteWedding(slug);
+              logout();
+              navigate("/");
+            }}
+            className="mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-mauve text-white font-body text-xs font-medium hover:bg-mauve/90 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete this wedding
+          </button>
         </div>
       </main>
       <Footer />

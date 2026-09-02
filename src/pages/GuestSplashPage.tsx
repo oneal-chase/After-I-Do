@@ -19,6 +19,8 @@ export default function GuestSplashPage() {
   const navigate = useNavigate();
   const [config, setConfig] = useState<WeddingConfig | null>(null);
 
+  const [notFound, setNotFound] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -28,6 +30,7 @@ export default function GuestSplashPage() {
         setConfig(loaded);
         injectGuestTheme(loaded);
       } else if (!cancelled) {
+        setNotFound(true);
         setConfig(getDefaultConfig());
       }
     })();
@@ -38,6 +41,24 @@ export default function GuestSplashPage() {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-cream">
         <div className="w-8 h-8 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center px-6 py-12 bg-cream text-center">
+        <div className="font-display text-5xl text-parchment mb-4">—</div>
+        <h1 className="font-display text-2xl text-navy mb-2">Wedding not found</h1>
+        <p className="font-body text-sm text-floral-slate max-w-xs mb-6">
+          The link <span className="font-mono text-navy">/w/{slug}</span> doesn’t exist or was deleted.
+        </p>
+        <Link to="/" className="px-6 py-3 rounded-xl bg-navy text-cream font-body text-sm font-semibold">Go to After I Do</Link>
+        <div className="flex items-center justify-center gap-3 mt-8">
+          <Link to="/privacy" className="font-body text-[11px] text-parchment hover:text-floral-slate transition-colors underline decoration-parchment/0 hover:decoration-parchment underline-offset-4">Privacy</Link>
+          <span className="w-1 h-1 rounded-full bg-parchment" />
+          <Link to="/terms" className="font-body text-[11px] text-parchment hover:text-floral-slate transition-colors underline decoration-parchment/0 hover:decoration-parchment underline-offset-4">Terms</Link>
+        </div>
       </div>
     );
   }
