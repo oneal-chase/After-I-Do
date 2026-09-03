@@ -166,6 +166,11 @@ export default function LiveWall() {
                 alt="Guest photo"
                 className="w-full h-full object-contain"
                 style={{ animation: transitioning ? "none" : "kenBurns 6s ease-in-out infinite alternate" }}
+                onError={(e) => {
+                  console.error("LiveWall image failed:", currentItem?.imageUrl);
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+                referrerPolicy="no-referrer"
               />
             </div>
           </div>
