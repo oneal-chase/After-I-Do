@@ -68,12 +68,15 @@ export default function LiveWall() {
     fetchFeed();
     intervalRef.current = setInterval(fetchFeed, 10000);
 
-    // Realtime: instant wall update when Supabase is primary (no poll lag)
+    // Realtime: instant wall update when Supabase is primary (no poll lag) — handle INSERT and DELETE
     let channel: ReturnType<NonNullable<typeof supabase>["channel"]> | null = null;
     if (isSupabaseConfigured && supabase) {
       channel = supabase
         .channel(`photos-${weddingSlug}`)
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "photos", filter: `wedding_slug=eq.${weddingSlug}` }, () => {
+          void fetchFeed();
+        })
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "photos", filter: `wedding_slug=eq.${weddingSlug}` }, () => {
           void fetchFeed();
         })
         .subscribe();
