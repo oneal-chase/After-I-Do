@@ -6,6 +6,7 @@ import { getWeddingUrl } from "../config/designTokens";
 import GoogleDriveConnect from "../components/GoogleDriveConnect";
 import Footer from "../components/Footer";
 import { deleteWedding } from "../utils/weddingStore";
+import { APP_BUILD } from "../lib/supabase";
 import { useState } from "react";
 
 export default function DashboardPage() {
@@ -66,7 +67,7 @@ export default function DashboardPage() {
             <li>Drive token: {(() => { try { const t = localStorage.getItem("google-drive-token"); const exp = Number(localStorage.getItem("google-drive-token-exp") || 0); if (!t) return "— not connected (tap Connect above)"; if (exp && Date.now() > exp - 60000) return "⚠️ expired — tap Connect again"; return `✓ present, expires in ${Math.round((exp - Date.now())/60000)}m`; } catch { return "unknown"; } })()}</li>
             <li>Drive folder: {(() => { try { return localStorage.getItem("google-drive-folder-id") ? `✓ ${localStorage.getItem("google-drive-folder-id")!.slice(0, 12)}… (My Drive / Wedding Capture / ${slug})` : "— not yet (created on Connect or first photo)"; } catch { return "unknown"; } })()}</li>
           </ul>
-          <p className="font-body text-[11px] text-parchment mt-2">If Supabase shows ❌, photos go nowhere — set Variables then <span className="font-mono">git push</span> to redeploy. After a test photo, hard-refresh <span className="font-mono">/w/{slug}/live</span> — it polls every 10s + Realtime.</p>
+          <p className="font-body text-[11px] text-parchment mt-2">Build {APP_BUILD}. If Supabase shows ❌, photos go nowhere — set Variables then <span className="font-mono">git push</span> to redeploy. After a test photo, hard-refresh <span className="font-mono">/w/{slug}/live</span> — it polls every 10s + Realtime. Phones that failed earlier will auto-retry their queued photos on next camera-page open.</p>
         </div>
 
         <GoogleDriveConnect />

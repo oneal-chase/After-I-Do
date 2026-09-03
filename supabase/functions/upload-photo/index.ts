@@ -144,10 +144,29 @@ Deno.serve(async (req) => {
     if (!supabaseUrl || !serviceKey) return json({ status: "error", message: "Server not configured (SUPABASE_URL)" }, 500);
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // verify wedding exists & is published (public)
+    // Self-heal: ensure wedding row exists (guest phones may onboard before any DB write synced)
     const { data: wedding, error: wErr } = await admin.from("weddings").select("slug,published").eq("slug", weddingSlug).maybeSingle();
     if (wErr) return json({ status: "error", message: wErr.message }, 500);
-    if (!wedding) return json({ status: "error", message: "Wedding not found" }, 404);
+    if (!wedding) {
+      // Auto-provision a minimal wedding row so the FK on photos never blocks a guest upload
+      const { error: mkErr } = await admin.from("weddings").insert({
+        slug: weddingSlug,
+        wedding_id: weddingSlug,
+        couple_names: weddingSlug,
+        config: { slug: weddingSlug, weddingId: weddingSlug, coupleNames: weddingSlug },
+        published: true,
+      });
+      if (mkErr) return json({ status: "error", message: `Wedding not found and auto-create failed: ${mkErr.message}` }, 404);
+    }
+
+    // Self-heal: ensure the storage bucket exists (service role can create it)
+    const BUCKET = "wedding-photos";
+    const { data: buckets } = await admin.storage.listBuckets();
+    const bucketExists = (buckets || []).some((b) => b.id === BUCKET || b.name === BUCKET);
+    if (!bucketExists) {
+      const { error: bucketErr } = await admin.storage.createBucket(BUCKET, { public: true });
+      if (bucketErr) console.error("Bucket auto-create failed:", bucketErr.message);
+    }
 
     let fileId = "";
     let imageUrl = "";
@@ -177,12 +196,12 @@ Deno.serve(async (req) => {
       const b64 = image.includes(",") ? image.split(",")[1] : image;
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       const path = `${weddingSlug}/${body.phaseName || "00_General"}/PHOTO_${Date.now()}.jpg`;
-      const { error: sErr } = await admin.storage.from("wedding-photos").upload(path, bytes, {
+      const { error: sErr } = await admin.storage.from(BUCKET).upload(path, bytes, {
         contentType: "image/jpeg",
         upsert: false,
       });
       if (sErr) return json({ status: "error", message: `Storage upload failed: ${sErr.message}` }, 500);
-      const { data: pub } = admin.storage.from("wedding-photos").getPublicUrl(path);
+      const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path);
       imageUrl = pub.publicUrl;
       fileId = path;
     }

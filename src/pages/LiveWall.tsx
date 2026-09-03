@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { QrCode, Maximize, Minimize } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useDesignSystem } from "../context/DesignSystemContext";
-import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import { supabase, isSupabaseConfigured, APP_BUILD } from "../lib/supabase";
 
 interface FeedItem {
   timestamp: string;
@@ -54,10 +54,8 @@ export default function LiveWall() {
       const resp = await fetch(endpoint);
       const data = await resp.json();
       if (data.status === "success" && data.feed) {
-        // filter to this wedding if GAS supports weddingSlug
-        const raw = data.feed as FeedItem[];
-        const filtered = weddingSlug ? raw.filter((f) => !f.phase || f.phase) : raw; // keep all for legacy single-wedding GAS
-        setFeed(filtered);
+        // Legacy single-wedding GAS: feed items carry no slug, so show everything.
+        setFeed(data.feed as FeedItem[]);
       }
     } catch (err) {
       console.error("Failed to fetch feed:", err);
@@ -152,10 +150,15 @@ export default function LiveWall() {
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
           <div className="font-script text-3xl text-gold/60">{config.coupleNames}</div>
           <p className="font-body text-sm text-cream/40">Waiting for guest photos…</p>
-          <p className="font-body text-[11px] text-cream/25">Wall is live for <span className="font-mono text-cream/40">/w/{weddingSlug}</span> · {isSupabaseConfigured ? "Supabase Realtime" : "GAS poll"}</p>
+          <p className="font-body text-[11px] text-cream/25">Wall is live for <span className="font-mono text-cream/40">/w/{weddingSlug}</span> · {isSupabaseConfigured ? "Supabase Realtime" : "GAS poll"} · build {APP_BUILD}</p>
           {!isSupabaseConfigured && !config.gasEndpoint && (
             <p className="font-body text-xs text-mauve bg-mauve/10 border border-mauve/20 rounded-xl px-4 py-2 mt-2">
               No sync endpoint configured. Connect Supabase or set VITE_GAS_WEBHOOK_URL.
+            </p>
+          )}
+          {feed.length === 0 && (
+            <p className="font-body text-[11px] text-cream/25 max-w-sm">
+              Taken a photo but don&apos;t see it? The photo may have failed before the fix — reopen the camera page once (this recovers queued photos), or check the Dashboard diagnostics.
             </p>
           )}
           <div className="w-8 h-8 border-2 border-cream/20 border-t-cream/50 rounded-full animate-spin mt-4" />

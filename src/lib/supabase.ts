@@ -1,5 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+// Bump when shipping fixes that phones must pick up (cache-bust verification).
+// Visible in LiveWall waiting screen + Dashboard diagnostics.
+export const APP_BUILD = "2026-09-03.1";
+
 function normalizeSupabaseUrl(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
   return raw.trim().replace(/\/rest\/v1\/?$/i, "").replace(/\/$/, "");
