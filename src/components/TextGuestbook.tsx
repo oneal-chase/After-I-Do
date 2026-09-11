@@ -29,7 +29,7 @@ export default function TextGuestbook({ onComplete, onCancel, initialText = "" }
         </div>
         <h3 className="font-display text-xl text-navy mb-1">Leave a Note</h3>
         <p className="font-body text-sm text-floral-slate">
-          For {config.coupleNames} — up to {MAX_LEN} characters.
+          Leave a message for {config.coupleNames}
         </p>
       </div>
 

@@ -1,6 +1,6 @@
 // Formats a captured photo for upload as a classic Polaroid:
-// cream card, square photo inset — sides bordered, top nearly flush,
-// thicker bottom band (the caption strip). No text baked in; the wall
+// cream card, square photo inset with matching borders on top/left/right
+// and a thicker bottom band (the caption strip). No text baked in; the wall
 // renders the note into the band. Corners are square in the stored JPEG
 // (JPEG has no alpha); the wall rounds them via CSS.
 
@@ -27,7 +27,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 //   side/top pads, bottom band. cardW = S*(1+2*SIDE), cardH = S*(TOP+1+BOTTOM)
 export const POLAROID = {
   SIDE_RATIO: 0.055, // border on left/right
-  TOP_RATIO: 0.012, // ~flush: raw photo's top marks the card top
+  TOP_RATIO: 0.055, // top border matches the side borders
   BOTTOM_RATIO: 0.19, // caption strip
   CREAM: "#FBF8F3",
 } as const;
@@ -41,10 +41,12 @@ export async function formatPolaroidImage(rawBlob: Blob): Promise<Blob> {
   const dataUrl = await blobToDataUrl(rawBlob);
   const photo = await loadImage(dataUrl);
 
-  // Square center-crop of the source, capped so the card stays ~1024px wide
+  // Square crop of the source, anchored to the TOP of the raw image:
+  // the raw image's top edge marks the top of the picture space
+  // (protects faces/heads on typical phone photos). Whitespace unchanged.
   const side = Math.min(photo.width, photo.height, 1024);
   const sx = (photo.width - side) / 2;
-  const sy = (photo.height - side) / 2;
+  const sy = 0;
 
   const padSide = Math.round(side * POLAROID.SIDE_RATIO);
   const padTop = Math.round(side * POLAROID.TOP_RATIO);

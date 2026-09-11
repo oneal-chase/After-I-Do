@@ -13,7 +13,6 @@ export default function SyncHUD() {
 
   const uploading = status.uploading > 0;
   const pending = status.pending > 0;
-  const allSynced = status.synced > 0 && status.pending === 0 && status.uploading === 0;
   const offline = !status.isOnline;
 
   return (
@@ -25,21 +24,12 @@ export default function SyncHUD() {
           ${offline ? "bg-mauve/20 text-mauve border border-mauve/30" : ""}
           ${uploading ? "bg-navy text-cream border border-floral-slate/30" : ""}
           ${pending && !uploading ? "bg-parchment/80 text-navy border border-gold/30" : ""}
-          ${allSynced ? "bg-floral-slate/15 text-floral-slate border border-floral-slate/20" : ""}
         `}
       >
         {uploading && (
           <>
             <span className="inline-block w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
             <span>Saving photo ({status.uploading} of {status.pending + status.uploading})…</span>
-          </>
-        )}
-        {allSynced && (
-          <>
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span>All photos synced to Drive</span>
           </>
         )}
         {offline && (
