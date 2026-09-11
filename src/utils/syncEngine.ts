@@ -10,6 +10,7 @@ export interface PhotoRecord {
   id: string;
   imageBase64: string;
   transcript?: string;
+  guestName?: string;
   phaseName: string;
   weddingSlug?: string;
   status: "pending" | "uploading" | "synced" | "failed";
@@ -108,13 +109,20 @@ async function fallbackToStorage(supabase: NonNullable<Awaited<ReturnType<typeof
 async function insertPhotoRow(supabase: NonNullable<Awaited<ReturnType<typeof import("../lib/supabase").getSupabaseClient>>>, record: PhotoRecord, weddingSlug: string, imageUrl: string, fileId: string): Promise<void> {
   const cfg = getWeddingConfig();
   await ensureWeddingRow(supabase, weddingSlug, cfg.coupleNames);
-  const { error } = await supabase.from("photos").insert({
+  const payload: Record<string, unknown> = {
     wedding_slug: weddingSlug,
     phase: record.phaseName,
     image_url: imageUrl,
     transcript: (record.transcript || "").slice(0, 280),
     file_id: fileId,
-  });
+  };
+  if (record.guestName) payload.guest_name = record.guestName.slice(0, 40);
+  let { error } = await supabase.from("photos").insert(payload);
+  // Graceful fallback: if the guest_name column hasn't been added yet, retry without it
+  if (error && payload.guest_name && /guest_name/i.test(error.message)) {
+    delete payload.guest_name;
+    ({ error } = await supabase.from("photos").insert(payload));
+  }
   if (error) throw new Error(`photos insert: ${error.message}`);
 }
 
@@ -161,6 +169,7 @@ async function uploadRecord(record: PhotoRecord): Promise<void> {
       body: JSON.stringify({
         image: record.imageBase64,
         transcript: record.transcript ?? "",
+        guestName: record.guestName || undefined,
         phaseName: record.phaseName,
         weddingSlug,
       }),

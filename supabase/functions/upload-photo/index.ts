@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
     const body = await req.json() as {
       image?: string;
       transcript?: string;
+      guestName?: string;
       phaseName?: string;
       weddingSlug?: string;
       token?: string;
@@ -212,6 +213,7 @@ Deno.serve(async (req) => {
       phase: body.phaseName || "00_General",
       image_url: imageUrl,
       transcript: (body.transcript || "").slice(0, 280),
+      guest_name: body.guestName ? body.guestName.slice(0, 40) : null,
       file_id: fileId,
     });
     if (pErr) console.error("photos insert failed:", pErr);

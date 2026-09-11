@@ -3,23 +3,26 @@ import { Check, RotateCcw, ArrowLeft, MessageCircle } from "lucide-react";
 import { useDesignSystem } from "../context/DesignSystemContext";
 
 interface TextGuestbookProps {
-  onComplete: (text: string) => void;
+  onComplete: (result: { text: string; name: string }) => void;
   onCancel: () => void;
   initialText?: string;
 }
 
 const MAX_LEN = 280;
+const MAX_NAME_LEN = 40;
 
 export default function TextGuestbook({ onComplete, onCancel, initialText = "" }: TextGuestbookProps) {
   const { config } = useDesignSystem();
   const [text, setText] = useState(initialText);
+  const [name, setName] = useState("");
 
   const remaining = MAX_LEN - text.length;
   const trimmed = text.trim();
+  const trimmedName = name.trim();
 
   const handleSubmit = useCallback(() => {
-    onComplete(trimmed);
-  }, [onComplete, trimmed]);
+    onComplete({ text: trimmed, name: trimmedName });
+  }, [onComplete, trimmed, trimmedName]);
 
   return (
     <div className="flex flex-col items-center gap-6 py-8 w-full max-w-sm mx-auto px-4">
@@ -48,6 +51,19 @@ export default function TextGuestbook({ onComplete, onCancel, initialText = "" }
           </span>
           <span className="font-script text-xs text-navy/40 hidden sm:inline">Your note appears on the live wall</span>
         </div>
+      </div>
+
+      <div className="w-full">
+        <label className="block font-body text-xs font-medium text-navy mb-1.5">
+          Sign your name <span className="text-parchment">(optional)</span>
+        </label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value.slice(0, MAX_NAME_LEN))}
+          placeholder="e.g. Aunt Linda"
+          className="w-full px-4 py-2.5 rounded-xl border border-parchment bg-cream/60 font-body text-sm text-navy placeholder:text-parchment/70 focus:outline-none focus:border-gold focus:bg-cream transition-colors"
+          maxLength={MAX_NAME_LEN}
+        />
       </div>
 
       <div className="flex flex-col w-full gap-3">

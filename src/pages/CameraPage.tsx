@@ -22,7 +22,7 @@ export default function CameraPage({ guestSlug }: CameraPageProps) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const { uploadPhoto } = usePhotoSync();
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastVoiceRef = useRef<string | null>(null);
+  const lastVoiceRef = useRef<{ text: string | null; name: string | null }>({ text: null, name: null });
 
   const phase = getCurrentPhase();
   const displayName = getPhaseDisplayName(phase);
@@ -49,11 +49,15 @@ export default function CameraPage({ guestSlug }: CameraPageProps) {
   }, []);
 
   const doUpload = useCallback(
-    async (text: string | null) => {
+    async (text: string | null, name: string | null) => {
       if (!capturedBlob) return;
       setUploadError(null);
       try {
-        await uploadPhoto(capturedBlob, { transcript: text || undefined, weddingSlug: guestSlug });
+        await uploadPhoto(capturedBlob, {
+          transcript: text || undefined,
+          weddingSlug: guestSlug,
+          name: name || undefined,
+        });
         setAppPhase("done");
         resetTimerRef.current = setTimeout(() => {
           setCapturedBlob(null);
@@ -74,25 +78,25 @@ export default function CameraPage({ guestSlug }: CameraPageProps) {
   );
 
   const handleNoteComplete = useCallback(
-    (text: string) => {
-      const trimmed = text.trim();
-      setNote(trimmed || null);
-      lastVoiceRef.current = trimmed || null;
+    (result: { text: string; name: string }) => {
+      const t = result.text.trim();
+      setNote(t || null);
+      lastVoiceRef.current = { text: t || null, name: result.name.trim() || null };
       setAppPhase("uploading");
-      void doUpload(trimmed || null);
+      void doUpload(t || null, result.name.trim() || null);
     },
     [doUpload],
   );
 
   const handleSkipNote = useCallback(() => {
     setSkipNote(true);
-    lastVoiceRef.current = null;
+    lastVoiceRef.current = { text: null, name: null };
     setAppPhase("uploading");
-    void doUpload(null);
+    void doUpload(null, null);
   }, [doUpload]);
 
   const handleRetry = useCallback(() => {
-    void doUpload(lastVoiceRef.current);
+    void doUpload(lastVoiceRef.current.text, lastVoiceRef.current.name);
   }, [doUpload]);
 
   const handleDiscard = useCallback(() => {

@@ -55,7 +55,7 @@ export function usePhotoSync() {
   const uploadPhoto = useCallback(
     async (
       imageBlob: Blob,
-      options?: { transcript?: string; weddingSlug?: string },
+      options?: { transcript?: string; weddingSlug?: string; name?: string },
     ) => {
       const MAX_RAW_BYTES = 8 * 1024 * 1024;
       if (imageBlob.size > MAX_RAW_BYTES) {
@@ -78,6 +78,7 @@ export function usePhotoSync() {
       const record = await enqueuePhoto({
         imageBase64,
         transcript: options?.transcript?.slice(0, 280),
+        guestName: options?.name?.slice(0, 40) || undefined,
         phaseName,
         weddingSlug: weddingSlug || undefined,
       });

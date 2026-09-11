@@ -11,6 +11,7 @@ interface FeedItem {
   imageUrl: string;
   fileId: string;
   transcript: string;
+  guestName?: string;
   // legacy field — old records may have it, new text-only uploads leave empty
   audioFileId?: string;
 }
@@ -50,21 +51,32 @@ function PhotoCard({ item, solo, index }: { item: FeedItem; solo: boolean; index
         />
         {item.transcript && (
           <div
-            className="absolute inset-x-0 flex items-center justify-center px-[8%]"
+            className="absolute inset-x-0 flex flex-col items-center justify-center px-[8%] gap-[0.4vh]"
             style={{ top: `${BAND_TOP_FRACTION * 100 + 1}%`, bottom: "2.5%" }}
           >
             <p
-              className="font-script text-navy/85 text-center leading-tight break-words line-clamp-2"
+              className="font-script text-navy/85 text-center leading-tight break-words"
               style={{
-                fontSize: solo ? "clamp(14px, 3.4vh, 40px)" : "clamp(10px, 2vh, 24px)",
-                WebkitLineClamp: solo ? 3 : 2,
+                fontSize: solo ? "clamp(14px, 3.2vh, 38px)" : "clamp(10px, 1.9vh, 23px)",
+                WebkitLineClamp: 2,
                 display: "-webkit-box",
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
               }}
             >
-              &ldquo;{item.transcript}&rdquo;
+              {item.transcript}
             </p>
+            {item.guestName && (
+              <span
+                className="font-body text-navy/60 leading-none"
+                style={{
+                  fontSize: solo ? "clamp(9px, 1.6vh, 18px)" : "clamp(8px, 1.1vh, 13px)",
+                  letterSpacing: "0.16em",
+                }}
+              >
+                — {item.guestName}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -106,12 +118,13 @@ export default function LiveWall() {
           .order("created_at", { ascending: false })
           .limit(100);
         if (error) throw error;
-        const mapped: FeedItem[] = (data || []).map((r: { created_at: string; phase: string; image_url: string; file_id: string; transcript: string | null }) => ({
+        const mapped: FeedItem[] = (data || []).map((r: { created_at: string; phase: string; image_url: string; file_id: string; transcript: string | null; guest_name?: string | null }) => ({
           timestamp: r.created_at,
           phase: r.phase,
           imageUrl: r.image_url,
           fileId: r.file_id || "",
           transcript: r.transcript || "",
+          guestName: r.guest_name || undefined,
         }));
         setFeed(mapped);
         return;
