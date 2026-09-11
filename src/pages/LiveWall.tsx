@@ -18,13 +18,23 @@ const GROUP_SIZE = 3; // up to 3 photos visible at once
 const SLIDE_MS = 8000; // time each batch is shown
 const FADE_MS = 700;
 
-function PhotoCard({ item, solo }: { item: FeedItem; solo: boolean }) {
-  // Stored images are baked Polaroids (portrait ≈ 1111:1290). Size by height;
-  // solo card stays under half the screen height.
-  const cardH = solo ? "h-[34vh] md:h-[38vh]" : "h-[18vh] md:h-[21vh]";
+// Deterministic slight tilt per photo — scattered-on-the-table feel
+function tiltFor(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 1000;
+  return (h / 1000) * 4 - 2; // ±2deg
+}
+
+function PhotoCard({ item, solo, index }: { item: FeedItem; solo: boolean; index: number }) {
+  // Solo polaroid fills close to the half-screen cap; batches shrink to fit 3 across
+  const cardH = solo ? "h-[46vh] md:h-[48vh]" : "h-[26vh] md:h-[28vh]";
+  const tilt = solo ? 0 : tiltFor(item.fileId || `${index}`);
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div
+      className="flex flex-col items-center gap-4 animate-fade-in-up"
+      style={{ transform: `rotate(${tilt}deg)` }}
+    >
       <img
         src={item.imageUrl}
         alt="Guest photo"
@@ -37,7 +47,7 @@ function PhotoCard({ item, solo }: { item: FeedItem; solo: boolean }) {
       />
       {/* Note directly underneath the Polaroid */}
       {item.transcript && (
-        <p className={`${solo ? "max-w-md" : "max-w-[12rem]"} font-script text-xl md:text-2xl text-cream/90 leading-snug text-center break-words px-2`}>
+        <p className={`${solo ? "max-w-lg text-3xl md:text-4xl" : "max-w-[13rem] text-xl md:text-2xl"} font-script text-cream/90 leading-snug text-center break-words px-2`}>
           &ldquo;{item.transcript}&rdquo;
         </p>
       )}
@@ -167,10 +177,11 @@ export default function LiveWall() {
 
   return (
     <div ref={wallRef} className="fixed inset-0 bg-navy overflow-hidden">
-      {/* Ambient glow gradients */}
+      {/* Ambient glow gradients + warm spotlight behind the polaroids */}
       <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-floral-slate/8 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gold/6 rounded-full blur-[100px] translate-x-1/4 translate-y-1/4" />
+        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-floral-slate/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gold/10 rounded-full blur-[100px] translate-x-1/4 translate-y-1/4" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vh] h-[90vh] rounded-full bg-gold/8 blur-[130px]" />
       </div>
 
       {groups.length === 0 ? (
@@ -195,9 +206,9 @@ export default function LiveWall() {
           <div
             className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ${transitioning ? "opacity-0" : "opacity-100"}`}
           >
-            <div className="flex flex-wrap items-start justify-center gap-6 md:gap-10 px-6 max-h-full py-16">
+            <div className="relative z-10 flex flex-wrap items-start justify-center gap-8 md:gap-14 px-6 max-h-full py-16">
               {currentGroup.map((item, i) => (
-                <PhotoCard key={`${item.fileId}-${item.timestamp}-${i}`} item={item} solo={currentGroup.length === 1} />
+                <PhotoCard key={`${item.fileId}-${item.timestamp}-${i}`} item={item} solo={currentGroup.length === 1} index={i} />
               ))}
             </div>
           </div>
