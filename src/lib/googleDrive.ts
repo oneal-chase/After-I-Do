@@ -4,9 +4,9 @@
 
 const GSI_SRC = "https://accounts.google.com/gsi/client";
 const SCOPES = "https://www.googleapis.com/auth/drive.file";
-const TOKEN_KEY = "google-drive-token";
-const TOKEN_EXP_KEY = "google-drive-token-exp";
-const FOLDER_KEY = "google-drive-folder-id";
+// Tokens and folder IDs live in memory only — zero browser storage. GIS can
+// silently re-acquire tokens for users who already granted drive.file, so a
+// refresh just needs one tap on "Connect".
 
 type TokenResponse = {
   access_token: string;
@@ -14,6 +14,9 @@ type TokenResponse = {
   token_type: string;
   scope: string;
 };
+
+let memToken: { token: string; expiresAt: number } | null = null;
+let memFolderId: string | null = null;
 
 let gsiLoading: Promise<void> | null = null;
 
@@ -34,27 +37,21 @@ function loadGsi(): Promise<void> {
 }
 
 export function getDriveToken(): { token: string; expiresAt: number } | null {
-  try {
-    const token = localStorage.getItem(TOKEN_KEY);
-    const exp = Number(localStorage.getItem(TOKEN_EXP_KEY) || 0);
-    if (!token) return null;
-    if (exp && Date.now() > exp - 60_000) return null; // 1min buffer
-    return { token, expiresAt: exp };
-  } catch { return null; }
+  if (!memToken) return null;
+  if (memToken.expiresAt && Date.now() > memToken.expiresAt - 60_000) return null; // 1min buffer
+  return memToken;
 }
 
 export function clearDriveToken(): void {
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(TOKEN_EXP_KEY);
-  } catch { /* ignore */ }
+  memToken = null;
+  memFolderId = null;
 }
 
 export function getDriveFolderId(): string | null {
-  try { return localStorage.getItem(FOLDER_KEY); } catch { return null; }
+  return memFolderId;
 }
 export function setDriveFolderId(id: string): void {
-  try { localStorage.setItem(FOLDER_KEY, id); } catch { /* ignore */ }
+  memFolderId = id;
 }
 
 export async function requestDriveAccess(): Promise<string> {
@@ -78,10 +75,7 @@ export async function requestDriveAccess(): Promise<string> {
             return;
           }
           const expiresAt = Date.now() + (r.expires_in || 3600) * 1000;
-          try {
-            localStorage.setItem(TOKEN_KEY, r.access_token);
-            localStorage.setItem(TOKEN_EXP_KEY, String(expiresAt));
-          } catch { /* ignore */ }
+          memToken = { token: r.access_token, expiresAt };
           resolve(r.access_token);
         },
         error_callback: (err: unknown) => reject(err instanceof Error ? err : new Error(String(err))),

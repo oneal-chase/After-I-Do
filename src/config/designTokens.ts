@@ -306,11 +306,25 @@ export function getWeddingUrl(slug: string, path: string = "/camera"): string {
   return `${base.replace(/\/$/, "")}/w/${cleanSlug}${cleanPath}`;
 }
 
+// --- Active config registry -------------------------------------------------
+// Supabase is the single source of truth; this in-memory registry mirrors the
+// currently-loaded wedding so non-React utils (frameProcessor, syncEngine,
+// phase lookup) can read theme/timeline without touching localStorage.
 export function generateMonogram(names: string): string {
   return names
     .split(/[&+]/)
     .map((n) => n.trim().charAt(0).toUpperCase())
     .join(" ");
+}
+
+let activeConfig: WeddingConfig = getDefaultConfig();
+
+export function setActiveConfig(config: WeddingConfig): void {
+  activeConfig = config;
+}
+
+export function getActiveConfig(): WeddingConfig {
+  return activeConfig;
 }
 
 export function getDefaultConfig(): WeddingConfig {

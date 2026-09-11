@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Download, Upload, RotateCcw } from "lucide-react";
 import { useDesignSystem } from "../../context/DesignSystemContext";
-import { STORAGE_KEY } from "../../config/designTokens";
+import { saveWedding } from "../../utils/weddingStore";
 
 export default function PreviewStep() {
   const { config, resetConfig } = useDesignSystem();
@@ -34,7 +34,7 @@ export default function PreviewStep() {
       try {
         const text = await file.text();
         const imported = JSON.parse(text);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
+        await saveWedding(imported);
         window.location.reload();
       } catch {
         alert("Could not read that file. Please make sure it was exported from this app.");

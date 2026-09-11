@@ -1,8 +1,10 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+// Auth gate. No localStorage anywhere — session lives in Supabase Auth,
+// and "has a wedding" is a Supabase query, not a local flag.
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoaded } = useAuth();
+  const { isAuthenticated, hasWedding, isLoaded } = useAuth();
   const location = useLocation();
 
   if (!isLoaded) {
@@ -15,6 +17,11 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
+  // Authenticated but hasn't finished creating a wedding → onboarding
+  if (!hasWedding && location.pathname !== "/onboard") {
+    return <Navigate to="/onboard" replace />;
   }
 
   return <>{children}</>;

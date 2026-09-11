@@ -7,12 +7,12 @@ import { saveWedding } from "../utils/weddingStore";
 export default function OnboardPage() {
   const navigate = useNavigate();
   const { config, updateConfig } = useDesignSystem();
-  const { register } = useAuth();
+  const { register, isAuthenticated } = useAuth();
 
   const handleComplete = async (account: { email: string; password: string } | null) => {
     const finalSlug = config.slug;
-    // create owner account for this wedding (pluggable auth)
-    if (account) {
+    // Re-running the wizard while logged in keeps the existing account — no re-register.
+    if (account && !isAuthenticated) {
       try {
         await register(account.email, account.password, finalSlug, config.weddingId);
       } catch (e) {

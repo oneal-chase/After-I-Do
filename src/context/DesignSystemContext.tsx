@@ -10,12 +10,12 @@ import {
   type WeddingConfig,
   type ColorTokens,
   type FontTokens,
-  STORAGE_KEY,
   getDefaultConfig,
   getFontStack,
-  slugify,
-  makeWeddingId,
+  setActiveConfig,
 } from "../config/designTokens";
+import { loadWeddingForOwner, saveWedding } from "../utils/weddingStore";
+import { useAuth } from "./AuthContext";
 
 interface DesignSystemContextValue {
   config: WeddingConfig;
@@ -46,57 +46,51 @@ function injectCSSVariables(config: WeddingConfig) {
   root.style.setProperty("--font-body", bodyFont);
 }
 
+function adoptConfig(config: WeddingConfig): WeddingConfig {
+  const merged = { ...getDefaultConfig(), ...config };
+  injectCSSVariables(merged);
+  setActiveConfig(merged);
+  return merged;
+}
+
 export function DesignSystemProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<WeddingConfig>(getDefaultConfig);
   const [isLoaded, setIsLoaded] = useState(false);
+  const { user, isAuthenticated, isLoaded: authLoaded } = useAuth();
+  const isGuestPath = typeof window !== "undefined" && window.location.pathname.startsWith("/w/");
 
+  // Guest pages own their config (loaded by GuestSplashPage/GuestCameraPage from Supabase).
+  // Owner pages: load the wedding for the authenticated user directly from Supabase.
   useEffect(() => {
-    try {
-      // Guest private link: /w/:slug — load per-wedding config if present
-      const guestMatch = window.location.pathname.match(/^\/w\/([^/]+)/);
-      if (guestMatch) {
-        const slug = guestMatch[1];
-        const guestKey = `wedding:${slug.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`;
-        const guestRaw = localStorage.getItem(guestKey);
-        if (guestRaw) {
-          const parsed = JSON.parse(guestRaw) as WeddingConfig;
-          const merged = { ...getDefaultConfig(), ...parsed };
-          // ensure slug/id are from stored guest config, not default
-          merged.slug = parsed.slug || slug;
-          merged.weddingId = parsed.weddingId || merged.weddingId;
-          setConfig(merged);
-          injectCSSVariables(merged);
-          setIsLoaded(true);
-          return;
+    let cancelled = false;
+    (async () => {
+      if (isGuestPath) {
+        setIsLoaded(true);
+        return;
+      }
+      if (!authLoaded) return;
+      if (isAuthenticated && user?.email) {
+        const { getSupabaseClient } = await import("../lib/supabase");
+        const sb = getSupabaseClient();
+        if (sb) {
+          const { data } = await sb.auth.getUser();
+          const authUser = data.user;
+          if (authUser && !cancelled) {
+            const wedding = await loadWeddingForOwner(authUser.id);
+            if (wedding && !cancelled) {
+              setConfig(adoptConfig(wedding));
+            }
+          }
         }
       }
+      if (!cancelled) setIsLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [authLoaded, isAuthenticated, user?.email, isGuestPath]);
 
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as WeddingConfig;
-        const merged = { ...getDefaultConfig(), ...parsed };
-        // backfill new fields for old installs
-        if (!merged.weddingId) merged.weddingId = makeWeddingId(slugify(merged.coupleNames || "wedding"));
-        if (!merged.slug) {
-          merged.slug = slugify(merged.coupleNames || "wedding");
-        }
-        if (!merged.createdAt) merged.createdAt = new Date().toISOString();
-        // Seed GAS endpoint/token from env if not set in config
-        if (!merged.gasEndpoint && import.meta.env.VITE_GAS_WEBHOOK_URL) {
-          merged.gasEndpoint = import.meta.env.VITE_GAS_WEBHOOK_URL;
-        }
-        if (!merged.gasToken && import.meta.env.VITE_GAS_TOKEN) {
-          merged.gasToken = import.meta.env.VITE_GAS_TOKEN;
-        }
-        setConfig(merged);
-        injectCSSVariables(merged);
-      } else {
-        injectCSSVariables(getDefaultConfig());
-      }
-    } catch {
-      injectCSSVariables(getDefaultConfig());
-    }
-    setIsLoaded(true);
+  // Persist straight to Supabase — the only store. Fire-and-forget with console surface.
+  const persist = useCallback((next: WeddingConfig) => {
+    saveWedding(next).catch((e) => console.error("Wedding save failed:", e));
   }, []);
 
   const updateConfig = useCallback(
@@ -104,11 +98,12 @@ export function DesignSystemProvider({ children }: { children: ReactNode }) {
       setConfig((prev) => {
         const next = { ...prev, ...partial };
         injectCSSVariables(next);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        setActiveConfig(next);
+        persist(next);
         return next;
       });
     },
-    [],
+    [persist],
   );
 
   const updateColors = useCallback(
@@ -116,11 +111,12 @@ export function DesignSystemProvider({ children }: { children: ReactNode }) {
       setConfig((prev) => {
         const next = { ...prev, colors: { ...prev.colors, ...colors } };
         injectCSSVariables(next);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        setActiveConfig(next);
+        persist(next);
         return next;
       });
     },
-    [],
+    [persist],
   );
 
   const updateFonts = useCallback(
@@ -128,19 +124,19 @@ export function DesignSystemProvider({ children }: { children: ReactNode }) {
       setConfig((prev) => {
         const next = { ...prev, fonts: { ...prev.fonts, ...fonts } };
         injectCSSVariables(next);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        setActiveConfig(next);
+        persist(next);
         return next;
       });
     },
-    [],
+    [persist],
   );
 
   const resetConfig = useCallback(() => {
     const fresh = getDefaultConfig();
-    setConfig(fresh);
-    injectCSSVariables(fresh);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
-  }, []);
+    setConfig(adoptConfig(fresh));
+    persist(fresh);
+  }, [persist]);
 
   return (
     <DesignSystemContext.Provider

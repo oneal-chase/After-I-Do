@@ -1,17 +1,7 @@
-import { getDefaultConfig, type WeddingConfig } from "./designTokens";
-
-function loadConfig(): WeddingConfig {
-  try {
-    const saved = localStorage.getItem("wedding-config");
-    if (saved) {
-      return { ...getDefaultConfig(), ...JSON.parse(saved) };
-    }
-  } catch { /* ignore */ }
-  return getDefaultConfig();
-}
+import { getActiveConfig, type WeddingConfig } from "./designTokens";
 
 export function getWeddingConfig(): WeddingConfig {
-  return loadConfig();
+  return getActiveConfig();
 }
 
 export function getCurrentPhase(date: Date = new Date()): string {

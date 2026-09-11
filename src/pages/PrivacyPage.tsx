@@ -41,10 +41,10 @@ export default function PrivacyPage() {
               <h2 className="font-display text-base text-navy mb-2">2. What we collect</h2>
               <ul className="list-disc ml-5 space-y-1 text-xs">
                 <li><span className="text-navy font-medium">Account:</span> email, password hash (or Google OAuth profile: email, name, avatar) when you create a wedding. We also store your slug, weddingId, and consent timestamp.</li>
-                <li><span className="text-navy font-medium">Wedding design:</span> couple names, date, venue, timezone, colors, fonts, monogram/background images (base64 or URL), timeline phases, and site slug. Stored in Supabase <span className="font-mono text-navy">weddings</span> table and in your browser localStorage (wedding-config, wedding:slug) for offline use.</li>
+                <li><span className="text-navy font-medium">Wedding design:</span> couple names, date, venue, timezone, colors, fonts, monogram/background images (base64 or URL), timeline phases, and site slug. Stored exclusively in the Supabase <span className="font-mono text-navy">weddings</span> table — nothing is kept in your browser after you leave.</li>
                 <li><span className="text-navy font-medium">Guest uploads (only if a guest chooses to):</span> Polaroid-stamped photo (JPEG), optional 280-character note, phase, wedding slug, timestamp. No audio is collected.</li>
-                <li><span className="text-navy font-medium">Google Drive (optional):</span> if you tap “Connect Google Drive,” we request <span className="font-mono text-navy">drive.file</span> scope — we can only create files the app created (in <span className="font-mono">My Drive / Wedding Capture / your-slug</span>). We store an access token and expiry in localStorage (`google-drive-token`). We do not read your existing Drive files.</li>
-                <li><span className="text-navy font-medium">Technical:</span> Supabase auth session cookies (`sb-*`), localStorage queue (`wedding-photo-queue`) for offline uploads, and anonymous storage logs.</li>
+                <li><span className="text-navy font-medium">Google Drive (optional):</span> if you tap “Connect Google Drive,” we request <span className="font-mono text-navy">drive.file</span> scope — we can only create files the app created (in <span className="font-mono">My Drive / Wedding Capture / your-slug</span>). The access token is held in memory for the current tab only and is never written to your browser’s storage. We do not read your existing Drive files.</li>
+                <li><span className="text-navy font-medium">Technical:</span> Supabase auth session (essential cookie/localStorage managed by the auth SDK, containing only your login token). No analytics, no tracking, no photo caching on device.</li>
               </ul>
             </section>
 
@@ -84,7 +84,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="font-display text-base text-navy mb-2">8. Cookies &amp; local storage</h2>
               <p>
-                We use essential cookies/localStorage for login (Supabase <span className="font-mono">sb-*</span>), wedding config, and offline photo queue. No advertising cookies. You can block cookies, but login and offline capture will not work.
+                We use one essential storage item: the Supabase auth session token (kept by the auth SDK so you stay logged in). All wedding data, photos, and notes live server-side in Supabase. No advertising cookies, no analytics.
               </p>
             </section>
 

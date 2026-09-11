@@ -28,7 +28,7 @@ export function usePhotoSync() {
   });
 
   const refreshStatus = useCallback(async () => {
-    const s = await getQueueStatus();
+    const s = getQueueStatus();
     setStatus({ ...s, isOnline: navigator.onLine });
   }, []);
 
@@ -55,29 +55,25 @@ export function usePhotoSync() {
   const uploadPhoto = useCallback(
     async (
       imageBlob: Blob,
-      options?: { transcript?: string },
+      options?: { transcript?: string; weddingSlug?: string },
     ) => {
-      const imageToUpload = imageBlob;
       const MAX_RAW_BYTES = 8 * 1024 * 1024;
-      if (imageToUpload.size > MAX_RAW_BYTES) {
+      if (imageBlob.size > MAX_RAW_BYTES) {
         throw new Error("Photo is too large. Try retaking with a lower resolution.");
       }
 
-      const stamped = await stampPolaroidFrame(imageToUpload, getCurrentPhase());
-
-      const toBase64 = (b: Blob) =>
-        new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error("Failed to read image"));
-          reader.readAsDataURL(b);
-        });
-
-      const imageBase64 = await toBase64(stamped);
       const phaseName = getCurrentPhase();
-      const weddingSlug = (() => {
-        try { return getWeddingConfig().slug || ""; } catch { return ""; }
-      })();
+      const cfg = getWeddingConfig();
+      const weddingSlug = options?.weddingSlug ?? cfg.slug ?? "";
+
+      const stamped = await stampPolaroidFrame(imageBlob, phaseName);
+
+      const imageBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read image"));
+        reader.readAsDataURL(stamped);
+      });
 
       const record = await enqueuePhoto({
         imageBase64,

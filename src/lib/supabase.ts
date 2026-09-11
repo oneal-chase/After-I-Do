@@ -27,3 +27,8 @@ export function requireSupabase(): SupabaseClient {
   if (!supabase) throw new Error("Supabase not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY");
   return supabase;
 }
+
+// Nullable accessor for code paths that degrade gracefully without Supabase
+export function getSupabaseClient(): SupabaseClient | null {
+  return supabase;
+}

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import { loadWeddingForOwner } from "../utils/weddingStore";
 
 export interface WeddingOwner {
   email: string;
@@ -9,205 +10,169 @@ export interface WeddingOwner {
 
 interface AuthState {
   user: WeddingOwner | null;
-  login: (slug: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
   register: (email: string, password: string, slug: string, weddingId: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
   isAuthenticated: boolean;
+  hasWedding: boolean;
   isLoaded: boolean;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const OWNERS_KEY = "wedding-owners";
-const SESSION_KEY = "wedding-session";
-
-type OwnerRecord = WeddingOwner & { passwordHash: string };
-
-function loadOwners(): Record<string, OwnerRecord> {
-  try {
-    const raw = localStorage.getItem(OWNERS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-function saveOwners(map: Record<string, OwnerRecord>) {
-  localStorage.setItem(OWNERS_KEY, JSON.stringify(map));
+function requireSupabase() {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error("Supabase not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY");
+  }
+  return supabase;
 }
 
-async function sha256(text: string): Promise<string> {
-  const data = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+function ownerFromSessionUser(u: { id: string; email?: string; user_metadata?: Record<string, string> }, slug: string, weddingId: string): WeddingOwner {
+  const meta = u.user_metadata as Record<string, string> | undefined;
+  return {
+    email: u.email || meta?.email || "",
+    slug,
+    weddingId: weddingId || meta?.weddingId || u.id,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<WeddingOwner | null>(null);
+  const [hasWedding, setHasWedding] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      // Prefer Supabase session if configured (FOSS, self-hostable)
-      if (isSupabaseConfigured && supabase) {
-        const { data } = await supabase.auth.getSession();
-        const sUser = data.session?.user;
-        if (sUser && !cancelled) {
-          // try to recover slug/weddingId from weddings table or session metadata
-          const meta = sUser.user_metadata as Record<string, string> | undefined;
-          const fallback = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } })() as WeddingOwner | null;
-          const next: WeddingOwner = {
-            email: sUser.email || meta?.email || fallback?.email || "",
-            slug: meta?.slug || fallback?.slug || "",
-            weddingId: meta?.weddingId || fallback?.weddingId || sUser.id,
-          };
-          if (next.slug) {
-            setUser(next);
-            localStorage.setItem(SESSION_KEY, JSON.stringify(next));
-          }
-        } else if (!cancelled) {
-          try {
-            const raw = localStorage.getItem(SESSION_KEY);
-            if (raw) setUser(JSON.parse(raw));
-          } catch { /* ignore */ }
-        }
-        if (!cancelled) setIsLoaded(true);
-        // keep in sync with future auth changes
-        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (cancelled) return;
-          if (session?.user) {
-            const u = session.user;
-            const m = u.user_metadata as Record<string, string> | undefined;
-            const fb2 = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } })() as WeddingOwner | null;
-            const n: WeddingOwner = { email: u.email || m?.email || fb2?.email || "", slug: m?.slug || fb2?.slug || "", weddingId: m?.weddingId || fb2?.weddingId || u.id };
-            if (n.slug) { setUser(n); localStorage.setItem(SESSION_KEY, JSON.stringify(n)); }
-          } else {
-            setUser(null);
-            localStorage.removeItem(SESSION_KEY);
-          }
-        });
-        return () => sub.subscription.unsubscribe();
-      }
-      try {
-        const raw = localStorage.getItem(SESSION_KEY);
-        if (raw) setUser(JSON.parse(raw));
-      } catch { /* ignore */ }
-      if (!cancelled) setIsLoaded(true);
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const login = useCallback(async (slug: string, password: string) => {
-    // Supabase path (preferred, FOSS)
-    if (isSupabaseConfigured && supabase) {
-      const owners = loadOwners();
-      const rec = owners[slug.toLowerCase()];
-      const email = rec?.email;
-      if (!email) return false;
-      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return false;
-      const u = data.user;
-      if (!u) return false;
-      const next: WeddingOwner = { email: email.toLowerCase(), slug: slug.toLowerCase(), weddingId: rec.weddingId };
+  // Load the owner's wedding (config + slug) directly from Supabase
+  const loadOwnerWedding = useCallback(async (authUser: { id: string; email?: string; user_metadata?: Record<string, string> }) => {
+    const wedding = await loadWeddingForOwner(authUser.id);
+    if (wedding) {
+      const next = ownerFromSessionUser(authUser, wedding.slug, wedding.weddingId);
       setUser(next);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(next));
-      return true;
+      setHasWedding(true);
+      return next;
     }
-    const owners = loadOwners();
-    const rec = owners[slug.toLowerCase()];
-    if (!rec) return false;
-    const hash = await sha256(password);
-    const ok = rec.passwordHash === hash || rec.passwordHash === password;
-    if (!ok) return false;
-    try {
-      const weddingRaw = localStorage.getItem(`wedding:${slug.toLowerCase()}`);
-      if (weddingRaw) {
-        const cfg = JSON.parse(weddingRaw) as { gasEndpoint?: string; gasToken?: string };
-        if (cfg.gasEndpoint) {
-          fetch(cfg.gasEndpoint, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ action: "verifyOwner", slug, email: rec.email, token: rec.passwordHash }),
-          }).catch(() => {});
-        }
-      }
-    } catch { /* ignore */ }
-
-    const next: WeddingOwner = { email: rec.email, slug: rec.slug, weddingId: rec.weddingId };
+    // account exists but wedding not published yet (mid-onboarding) — use metadata slug
+    const meta = authUser.user_metadata as Record<string, string> | undefined;
+    const next = ownerFromSessionUser(authUser, meta?.slug || "", "");
     setUser(next);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(next));
-    return true;
+    setHasWedding(false);
+    return next;
   }, []);
 
-  const register = useCallback(async (email: string, password: string, slug: string, weddingId: string) => {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.toLowerCase(),
-        password,
-        options: { data: { slug: slug.toLowerCase(), weddingId } },
-      });
-      if (error) throw new Error(error.message);
-      // Supabase may require email confirmation; still create local mapping for immediate login
-      const owners = loadOwners();
-      const key = slug.toLowerCase();
-      if (owners[key]) throw new Error("That wedding link is already taken. Try another slug.");
-      const passwordHash = await sha256(password);
-      owners[key] = { email: email.toLowerCase(), slug: key, weddingId, passwordHash };
-      saveOwners(owners);
-      const u = data.user;
-      const next: WeddingOwner = { email: email.toLowerCase(), slug: key, weddingId: u?.id || weddingId };
-      setUser(next);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setIsLoaded(true);
       return;
     }
-    const owners = loadOwners();
-    const key = slug.toLowerCase();
-    if (owners[key]) throw new Error("That wedding link is already taken. Try another slug.");
-    const passwordHash = await sha256(password);
-    owners[key] = { email: email.toLowerCase(), slug: key, weddingId, passwordHash };
-    saveOwners(owners);
-    const next: WeddingOwner = { email: email.toLowerCase(), slug: key, weddingId };
-    setUser(next);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(next));
-  }, []);
+    let cancelled = false;
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const sUser = data.session?.user;
+      if (sUser && !cancelled) {
+        await loadOwnerWedding(sUser as unknown as { id: string; email?: string; user_metadata?: Record<string, string> });
+      }
+      if (!cancelled) setIsLoaded(true);
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === "SIGNED_IN" && session?.user) {
+        void loadOwnerWedding(session.user as unknown as { id: string; email?: string; user_metadata?: Record<string, string> });
+      } else if (event === "SIGNED_OUT" || !session) {
+        setUser(null);
+        setHasWedding(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, [loadOwnerWedding]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const sb = requireSupabase();
+    const { error, data } = await sb.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password,
+    });
+    if (error) throw new Error(error.message);
+    if (!data.user) throw new Error("Login failed");
+    await loadOwnerWedding(data.user as unknown as { id: string; email?: string; user_metadata?: Record<string, string> });
+  }, [loadOwnerWedding]);
 
   const loginWithGoogle = useCallback(async () => {
-    if (!isSupabaseConfigured || !supabase) throw new Error("Google sign-in needs Supabase — set VITE_SUPABASE_URL / ANON_KEY");
-    const { error } = await supabase.auth.signInWithOAuth({
+    const sb = requireSupabase();
+    const { error } = await sb.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/dashboard`,
         queryParams: { access_type: "offline", prompt: "consent" },
-        // Note: drive.file is granted separately via GIS “Connect Drive” button so auth stays simple.
-        // To request it here too, add scopes: "https://www.googleapis.com/auth/drive.file"
       },
     });
     if (error) throw new Error(error.message);
   }, []);
 
+  const register = useCallback(async (email: string, password: string, slug: string, weddingId: string) => {
+    const sb = requireSupabase();
+
+    // Slug uniqueness is enforced by DB unique constraint; surface a friendly error first
+    const { data: existing } = await sb.from("weddings").select("slug").eq("slug", slug.toLowerCase()).maybeSingle();
+    if (existing) throw new Error("That wedding link is already taken. Try another slug.");
+
+    const { data, error } = await sb.auth.signUp({
+      email: email.toLowerCase().trim(),
+      password,
+      options: { data: { slug: slug.toLowerCase(), weddingId } },
+    });
+    if (error) throw new Error(error.message);
+
+    // Publish the wedding row owned by this user (upsert overwrites any anon row with the same slug)
+    const { error: upErr } = await sb
+      .from("weddings")
+      .upsert(
+        {
+          slug: slug.toLowerCase(),
+          wedding_id: weddingId,
+          owner_id: data.user?.id ?? null,
+          couple_names: "Newlyweds",
+          config: { slug: slug.toLowerCase(), weddingId, coupleNames: "Newlyweds" },
+          published: true,
+        },
+        { onConflict: "slug" },
+      );
+    if (upErr) throw new Error(`Could not claim /w/${slug}: ${upErr.message}`);
+
+    if (data.user) {
+      await loadOwnerWedding(data.user as unknown as { id: string; email?: string; user_metadata?: Record<string, string> });
+    }
+  }, [loadOwnerWedding]);
+
   const sendPasswordReset = useCallback(async (email: string) => {
-    if (!isSupabaseConfigured || !supabase) throw new Error("Password reset needs Supabase — set VITE_SUPABASE_URL / ANON_KEY");
-    const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase(), {
+    const sb = requireSupabase();
+    const { error } = await sb.auth.resetPasswordForEmail(email.toLowerCase(), {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error) throw new Error(error.message);
   }, []);
 
   const updatePassword = useCallback(async (newPassword: string) => {
-    if (!isSupabaseConfigured || !supabase) throw new Error("Password update needs Supabase");
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const sb = requireSupabase();
+    const { error } = await sb.auth.updateUser({ password: newPassword });
     if (error) throw new Error(error.message);
   }, []);
 
   const logout = useCallback(() => {
     if (isSupabaseConfigured && supabase) void supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(SESSION_KEY);
+    setHasWedding(false);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, register, sendPasswordReset, updatePassword, isAuthenticated: !!user, isLoaded }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, register, sendPasswordReset, updatePassword, isAuthenticated: !!user, hasWedding, isLoaded }}>
       {children}
     </AuthContext.Provider>
   );

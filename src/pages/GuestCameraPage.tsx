@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import CameraPage from "./CameraPage";
 import { loadWedding } from "../utils/weddingStore";
-import { getDefaultConfig, type WeddingConfig } from "../config/designTokens";
+import { setActiveConfig, getDefaultConfig, type WeddingConfig } from "../config/designTokens";
 
 function injectGuestTheme(c: WeddingConfig) {
   const r = document.documentElement.style;
@@ -16,25 +16,23 @@ function injectGuestTheme(c: WeddingConfig) {
 
 export default function GuestCameraPage() {
   const { slug } = useParams<{ slug: string }>();
-  const [ready, setReady] = useState(false);
+  const [config, setConfig] = useState<WeddingConfig | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!slug) { setReady(true); return; }
-      const loaded = await loadWedding(slug);
+      const loaded = slug ? await loadWedding(slug) : null;
       const cfg = loaded || getDefaultConfig();
       if (!cancelled) {
+        setActiveConfig(cfg);
         injectGuestTheme(cfg);
-        // persist guest wedding so syncEngine uses correct slug/endpoint
-        try { localStorage.setItem("wedding-config", JSON.stringify(cfg)); } catch { /* ignore */ }
-        setReady(true);
+        setConfig(cfg);
       }
     })();
     return () => { cancelled = true; };
   }, [slug]);
 
-  if (!ready) {
+  if (!config) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-cream">
         <div className="w-8 h-8 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
@@ -42,5 +40,5 @@ export default function GuestCameraPage() {
     );
   }
 
-  return <CameraPage />;
+  return <CameraPage guestSlug={slug} />;
 }

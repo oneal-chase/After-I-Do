@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, AlertCircle, RotateCcw, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import CameraViewfinder from "../components/CameraViewfinder";
 import TextGuestbook from "../components/TextGuestbook";
@@ -9,14 +9,20 @@ import { getCurrentPhase, getPhaseDisplayName } from "../config/wedding.config";
 
 type AppPhase = "capture" | "note" | "uploading" | "done";
 
-export default function CameraPage() {
+interface CameraPageProps {
+  guestSlug?: string;
+}
+
+export default function CameraPage({ guestSlug }: CameraPageProps) {
   const [appPhase, setAppPhase] = useState<AppPhase>("capture");
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [skipNote, setSkipNote] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const { uploadPhoto } = usePhotoSync();
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastVoiceRef = useRef<string | null>(null);
 
   const phase = getCurrentPhase();
   const displayName = getPhaseDisplayName(phase);
@@ -45,26 +51,33 @@ export default function CameraPage() {
   const doUpload = useCallback(
     async (text: string | null) => {
       if (!capturedBlob) return;
-      await uploadPhoto(capturedBlob, { transcript: text || undefined });
-      setAppPhase("done");
-      resetTimerRef.current = setTimeout(() => {
-        setCapturedBlob(null);
-        setCapturedPreview((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return null;
-        });
-        setNote(null);
-        setSkipNote(false);
-        setAppPhase("capture");
-      }, 3000);
+      setUploadError(null);
+      try {
+        await uploadPhoto(capturedBlob, { transcript: text || undefined, weddingSlug: guestSlug });
+        setAppPhase("done");
+        resetTimerRef.current = setTimeout(() => {
+          setCapturedBlob(null);
+          setCapturedPreview((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+          });
+          setNote(null);
+          setSkipNote(false);
+          setAppPhase("capture");
+        }, 3000);
+      } catch (err) {
+        setUploadError((err as Error).message);
+        // stay on "uploading" screen with retry controls
+      }
     },
-    [capturedBlob, uploadPhoto],
+    [capturedBlob, uploadPhoto, guestSlug],
   );
 
   const handleNoteComplete = useCallback(
     (text: string) => {
       const trimmed = text.trim();
       setNote(trimmed || null);
+      lastVoiceRef.current = trimmed || null;
       setAppPhase("uploading");
       void doUpload(trimmed || null);
     },
@@ -73,9 +86,27 @@ export default function CameraPage() {
 
   const handleSkipNote = useCallback(() => {
     setSkipNote(true);
+    lastVoiceRef.current = null;
     setAppPhase("uploading");
     void doUpload(null);
   }, [doUpload]);
+
+  const handleRetry = useCallback(() => {
+    void doUpload(lastVoiceRef.current);
+  }, [doUpload]);
+
+  const handleDiscard = useCallback(() => {
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    setCapturedBlob(null);
+    setCapturedPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setNote(null);
+    setSkipNote(false);
+    setUploadError(null);
+    setAppPhase("capture");
+  }, []);
 
   return (
     <div className="min-h-dvh flex flex-col bg-cream">
@@ -125,14 +156,42 @@ export default function CameraPage() {
             {capturedPreview && (
               <img src={capturedPreview} alt="Uploading preview" className="w-40 h-40 rounded-xl object-cover polaroid-shadow border-2 border-gold/20" />
             )}
-            <div className="flex items-center gap-3">
-              <span className="w-5 h-5 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
-              <span className="font-body text-sm text-navy">Saving your moment…</span>
-            </div>
-            {note && (
-              <p className="font-script text-lg text-navy/60 text-center max-w-xs italic">
-                &ldquo;{note}&rdquo;
-              </p>
+            {uploadError ? (
+              <>
+                <div className="flex items-center gap-2 text-mauve">
+                  <AlertCircle className="w-5 h-5" />
+                  <span className="font-body text-sm font-medium">Upload failed</span>
+                </div>
+                <p className="font-body text-xs text-floral-slate text-center max-w-xs">{uploadError}</p>
+                <div className="flex flex-col gap-2 w-full max-w-xs">
+                  <button
+                    onClick={handleRetry}
+                    className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl bg-navy text-cream font-body text-sm font-semibold hover:bg-navy/90 transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Try again
+                  </button>
+                  <button
+                    onClick={handleDiscard}
+                    className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-parchment text-floral-slate font-body text-sm hover:bg-parchment/30 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Discard photo
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="w-5 h-5 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+                  <span className="font-body text-sm text-navy">Saving your moment…</span>
+                </div>
+                {note && (
+                  <p className="font-script text-lg text-navy/60 text-center max-w-xs italic">
+                    &ldquo;{note}&rdquo;
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}

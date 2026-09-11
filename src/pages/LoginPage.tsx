@@ -8,7 +8,7 @@ import Footer from "../components/Footer";
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
-  const [slug, setSlug] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -17,15 +17,18 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!slug.trim() || !password) {
-      setError("Enter your wedding link and password.");
+    if (!email.trim() || !password) {
+      setError("Enter your email and password.");
       return;
     }
     setLoading(true);
-    const ok = await login(slug.trim().toLowerCase(), password);
-    setLoading(false);
-    if (ok) navigate("/dashboard");
-    else setError("That link or password didn’t match. Check your QR setup or try again.");
+    try {
+      await login(email.trim(), password);
+      navigate("/dashboard");
+    } catch (err) {
+      setError((err as Error).message || "That email or password didn’t match. Try again.");
+      setLoading(false);
+    }
   };
 
   const handleGoogle = async () => {
@@ -67,24 +70,21 @@ export default function LoginPage() {
 
           <div className="flex items-center gap-3 my-2">
             <div className="h-px flex-1 bg-parchment" />
-            <span className="font-body text-[11px] text-parchment">or use wedding password</span>
+            <span className="font-body text-[11px] text-parchment">or with email</span>
             <div className="h-px flex-1 bg-parchment" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block font-body text-xs font-medium text-navy mb-1.5">Wedding link (slug)</label>
-              <div className="flex items-center gap-2">
-                <span className="font-body text-xs text-parchment">/w/</span>
-                <input
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                  placeholder="kendra-diego"
-                  className="flex-1 px-4 py-3 rounded-xl border border-parchment bg-cream/50 font-body text-sm text-navy focus:outline-none focus:border-gold transition-colors"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                />
-              </div>
+              <label className="block font-body text-xs font-medium text-navy mb-1.5">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 rounded-xl border border-parchment bg-cream/50 font-body text-sm text-navy focus:outline-none focus:border-gold transition-colors"
+                autoComplete="email"
+              />
             </div>
             <div>
               <label className="block font-body text-xs font-medium text-navy mb-1.5">Password</label>
@@ -105,7 +105,7 @@ export default function LoginPage() {
               className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-navy text-cream font-body text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-50"
             >
               {loading ? <span className="w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" /> : <LogIn className="w-4 h-4" />}
-              {loading ? "Checking…" : "Log in with password"}
+              {loading ? "Checking…" : "Log in"}
             </button>
           </form>
 

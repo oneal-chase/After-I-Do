@@ -1,7 +1,6 @@
 import { useDesignSystem } from "../../context/DesignSystemContext";
 import { generateMonogram, slugify } from "../../config/designTokens";
 import { useCallback } from "react";
-import { saveWedding } from "../../utils/weddingStore";
 
 const TIMEZONES = [
   "America/New_York",
@@ -34,25 +33,17 @@ export default function WelcomeStep() {
       if (!currentSlug || currentSlug === prevAuto) {
         (patch as unknown as { slug: string }).slug = slugAuto;
       }
+      // Config persists to Supabase at "Save & Launch" — nothing local, nothing per-keystroke
       updateConfig(patch as Parameters<typeof updateConfig>[0]);
-      // persist per-wedding key for QR isolation
-      try {
-        const next = { ...config, ...patch } as unknown as import("../../config/designTokens").WeddingConfig;
-        void saveWedding(next);
-      } catch { /* ignore */ }
     },
     [updateConfig, config],
   );
 
   const handleSlugChange = useCallback(
     (value: string) => {
-      const s = slugify(value);
-      updateConfig({ slug: s });
-      try {
-        void saveWedding({ ...config, slug: s } as unknown as import("../../config/designTokens").WeddingConfig);
-      } catch { /* ignore */ }
+      updateConfig({ slug: slugify(value) });
     },
-    [updateConfig, config],
+    [updateConfig],
   );
 
   return (
