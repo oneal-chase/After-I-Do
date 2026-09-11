@@ -3,6 +3,7 @@ import { QrCode, Maximize, Minimize } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useDesignSystem } from "../context/DesignSystemContext";
 import { supabase, isSupabaseConfigured, APP_BUILD } from "../lib/supabase";
+import { BAND_TOP_FRACTION } from "../utils/frameProcessor";
 
 interface FeedItem {
   timestamp: string;
@@ -27,30 +28,46 @@ function tiltFor(id: string): number {
 
 function PhotoCard({ item, solo, index }: { item: FeedItem; solo: boolean; index: number }) {
   // Big, projector-scale polaroids: solo near-full height, batches ~2× the old size
-  const cardH = solo ? "h-[70vh] md:h-[74vh]" : "h-[52vh] md:h-[55vh]";
+  const cardH = solo ? "h-[70vh] md:h-[76vh]" : "h-[52vh] md:h-[55vh]";
   const tilt = solo ? 0 : tiltFor(item.fileId || `${index}`);
 
   return (
     <div
-      className="flex flex-col items-center gap-4 animate-fade-in-up"
+      className="flex flex-col items-center animate-fade-in-up"
       style={{ transform: `rotate(${tilt}deg)` }}
     >
-      <img
-        src={item.imageUrl}
-        alt="Guest photo"
-        referrerPolicy="no-referrer"
-        className={`${cardH} w-auto rounded-xl polaroid-shadow`}
-        onError={(e) => {
-          console.error("LiveWall image failed:", item.imageUrl);
-          (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-        }}
-      />
-      {/* Note directly underneath the Polaroid */}
-      {item.transcript && (
-        <p className={`${solo ? "max-w-lg text-3xl md:text-4xl" : "max-w-[14rem] text-2xl md:text-3xl"} font-script text-cream/90 leading-snug text-center break-words px-2`}>
-          &ldquo;{item.transcript}&rdquo;
-        </p>
-      )}
+      {/* Polaroid with its note rendered inside the blank bottom band */}
+      <div className="relative">
+        <img
+          src={item.imageUrl}
+          alt="Guest photo"
+          referrerPolicy="no-referrer"
+          className={`${cardH} w-auto rounded-xl polaroid-shadow`}
+          onError={(e) => {
+            console.error("LiveWall image failed:", item.imageUrl);
+            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+          }}
+        />
+        {item.transcript && (
+          <div
+            className="absolute inset-x-0 flex items-center justify-center px-[8%]"
+            style={{ top: `${BAND_TOP_FRACTION * 100 + 1}%`, bottom: "2.5%" }}
+          >
+            <p
+              className="font-script text-navy/85 text-center leading-tight break-words line-clamp-2"
+              style={{
+                fontSize: solo ? "clamp(14px, 3.4vh, 40px)" : "clamp(10px, 2vh, 24px)",
+                WebkitLineClamp: solo ? 3 : 2,
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              &ldquo;{item.transcript}&rdquo;
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
