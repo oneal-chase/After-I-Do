@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { QrCode, Maximize, Minimize } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useDesignSystem } from "../context/DesignSystemContext";
@@ -14,14 +14,45 @@ interface FeedItem {
   audioFileId?: string;
 }
 
+const GROUP_SIZE = 3; // up to 3 photos visible at once
+const SLIDE_MS = 8000; // time each batch is shown
+const FADE_MS = 700;
+
+function PhotoCard({ item, solo }: { item: FeedItem; solo: boolean }) {
+  const imgSide = solo ? "w-[46vh] md:w-[50vh]" : "w-[24vh] md:w-[28vh]";
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      {/* Framed square photo — one flexbox per photo */}
+      <div className="bg-cream p-2.5 rounded-xl border border-parchment polaroid-shadow">
+        <img
+          src={item.imageUrl}
+          alt="Guest photo"
+          referrerPolicy="no-referrer"
+          className={`${imgSide} aspect-square object-cover rounded-lg`}
+          onError={(e) => {
+            console.error("LiveWall image failed:", item.imageUrl);
+            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+          }}
+        />
+      </div>
+      {/* Note directly underneath the framed image */}
+      {item.transcript && (
+        <p className={`${solo ? "max-w-md" : "max-w-[12rem]"} font-script text-xl md:text-2xl text-cream/90 leading-snug text-center break-words px-2`}>
+          &ldquo;{item.transcript}&rdquo;
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function LiveWall() {
   const { config } = useDesignSystem();
   const params = useParams<{ slug: string }>();
   const weddingSlug = params.slug || config.slug;
   const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [groupIndex, setGroupIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
-  const [showTranscript, setShowTranscript] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchFeed = useCallback(async () => {
@@ -54,7 +85,6 @@ export default function LiveWall() {
       const resp = await fetch(endpoint);
       const data = await resp.json();
       if (data.status === "success" && data.feed) {
-        // Legacy single-wedding GAS: feed items carry no slug, so show everything.
         setFeed(data.feed as FeedItem[]);
       }
     } catch (err) {
@@ -66,7 +96,7 @@ export default function LiveWall() {
     fetchFeed();
     intervalRef.current = setInterval(fetchFeed, 10000);
 
-    // Realtime: instant wall update when Supabase is primary (no poll lag) — handle INSERT and DELETE
+    // Realtime: instant wall update on INSERT or DELETE (no poll lag)
     let channel: ReturnType<NonNullable<typeof supabase>["channel"]> | null = null;
     if (isSupabaseConfigured && supabase) {
       channel = supabase
@@ -86,34 +116,31 @@ export default function LiveWall() {
     };
   }, [fetchFeed, weddingSlug]);
 
-  // Clamp index when feed shrinks (poll can return fewer items)
+  // Chunk newest-first feed into batches of up to GROUP_SIZE
+  const groups = useMemo(() => {
+    const size = Math.min(GROUP_SIZE, Math.max(1, feed.length));
+    const out: FeedItem[][] = [];
+    for (let i = 0; i < feed.length; i += size) out.push(feed.slice(i, i + size));
+    return out;
+  }, [feed]);
+
+  // Reset to newest batch when the feed changes
   useEffect(() => {
-    if (feed.length === 0) return;
-    setCurrentIndex((prev) => (prev >= feed.length ? 0 : prev));
+    setGroupIndex(0);
   }, [feed.length]);
 
+  // Rotate batches
   useEffect(() => {
-    if (feed.length === 0) return;
-
+    if (groups.length <= 1) return;
     const cycle = setInterval(() => {
       setTransitioning(true);
-      setShowTranscript(false);
-
       setTimeout(() => {
-        setCurrentIndex((prev) => {
-          const next = (prev + 1) % feed.length;
-          const item = feed[next];
-          if (item?.transcript) {
-            setTimeout(() => setShowTranscript(true), 1200);
-          }
-          return next;
-        });
+        setGroupIndex((prev) => (prev + 1) % groups.length);
         setTransitioning(false);
-      }, 800);
-    }, 6000);
-
+      }, FADE_MS);
+    }, SLIDE_MS);
     return () => clearInterval(cycle);
-  }, [feed]);
+  }, [groups.length]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const wallRef = useRef<HTMLDivElement>(null);
@@ -136,7 +163,8 @@ export default function LiveWall() {
     }
   }, []);
 
-  const currentItem = feed[currentIndex];
+  const currentGroup = groups[Math.min(groupIndex, Math.max(0, groups.length - 1))] ?? [];
+  const currentPhase = currentGroup[0]?.phase;
 
   return (
     <div ref={wallRef} className="fixed inset-0 bg-navy overflow-hidden">
@@ -146,7 +174,7 @@ export default function LiveWall() {
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gold/6 rounded-full blur-[100px] translate-x-1/4 translate-y-1/4" />
       </div>
 
-      {feed.length === 0 ? (
+      {groups.length === 0 ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
           <div className="font-script text-3xl text-gold/60">{config.coupleNames}</div>
           <p className="font-body text-sm text-cream/40">Waiting for guest photos…</p>
@@ -156,46 +184,28 @@ export default function LiveWall() {
               No sync endpoint configured. Connect Supabase or set VITE_GAS_WEBHOOK_URL.
             </p>
           )}
-          {feed.length === 0 && (
+          {isSupabaseConfigured && (
             <p className="font-body text-[11px] text-cream/25 max-w-sm">
-              Taken a photo but don&apos;t see it? The photo may have failed before the fix — reopen the camera page once (this recovers queued photos), or check the Dashboard diagnostics.
+              Taken a photo but don&apos;t see it? Reopen the camera page once — queued photos retry automatically — or check the Dashboard diagnostics.
             </p>
           )}
           <div className="w-8 h-8 border-2 border-cream/20 border-t-cream/50 rounded-full animate-spin mt-4" />
         </div>
       ) : (
         <>
-          <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ${transitioning ? "opacity-0" : "opacity-100"}`}>
-            <div className="relative w-full h-full">
-              <img
-                src={currentItem?.imageUrl}
-                alt="Guest photo"
-                className="w-full h-full object-contain"
-                style={{ animation: transitioning ? "none" : "kenBurns 6s ease-in-out infinite alternate" }}
-                onError={(e) => {
-                  console.error("LiveWall image failed:", currentItem?.imageUrl);
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-                referrerPolicy="no-referrer"
-              />
+          <div
+            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ${transitioning ? "opacity-0" : "opacity-100"}`}
+          >
+            <div className="flex flex-wrap items-start justify-center gap-6 md:gap-10 px-6 max-h-full py-16">
+              {currentGroup.map((item, i) => (
+                <PhotoCard key={`${item.fileId}-${item.timestamp}-${i}`} item={item} solo={currentGroup.length === 1} />
+              ))}
             </div>
           </div>
 
-          {showTranscript && currentItem?.transcript && (
-            <div className="absolute bottom-0 left-0 right-0 z-10">
-              <div className="bg-gradient-to-t from-navy/90 via-navy/60 to-transparent pt-20 pb-12 px-8">
-                <div className="max-w-2xl mx-auto text-center animate-fade-in-up">
-                  <p className="font-script text-2xl md:text-3xl text-cream/90 leading-relaxed">
-                    &ldquo;{currentItem.transcript}&rdquo;
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="absolute top-6 right-6 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-navy/40 backdrop-blur-sm border border-cream/10">
             <span className="w-1.5 h-1.5 rounded-full bg-gold" />
-            <span className="font-body text-[10px] text-cream/70 font-medium">{currentItem?.phase?.replace(/_/g, " ")}</span>
+            <span className="font-body text-[10px] text-cream/70 font-medium">{currentPhase?.replace(/_/g, " ")}</span>
           </div>
 
           <div className="absolute bottom-6 right-6 z-10">
@@ -217,13 +227,6 @@ export default function LiveWall() {
           </div>
         </>
       )}
-
-      <style>{`
-        @keyframes kenBurns {
-          0% { transform: scale(1) translate(0, 0); }
-          100% { transform: scale(1.06) translate(-1%, -0.5%); }
-        }
-      `}</style>
     </div>
   );
 }

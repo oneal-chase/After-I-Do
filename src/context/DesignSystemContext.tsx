@@ -14,7 +14,7 @@ import {
   getFontStack,
   setActiveConfig,
 } from "../config/designTokens";
-import { loadWeddingForOwner, saveWedding } from "../utils/weddingStore";
+import { loadWedding, loadWeddingForOwner, saveWedding } from "../utils/weddingStore";
 import { useAuth } from "./AuthContext";
 
 interface DesignSystemContextValue {
@@ -59,13 +59,18 @@ export function DesignSystemProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoaded: authLoaded } = useAuth();
   const isGuestPath = typeof window !== "undefined" && window.location.pathname.startsWith("/w/");
 
-  // Guest pages own their config (loaded by GuestSplashPage/GuestCameraPage from Supabase).
-  // Owner pages: load the wedding for the authenticated user directly from Supabase.
+  // Guest pages: load the wedding theme for the slug in the URL (in-memory only).
+  // Owner pages: load the wedding for the authenticated user from Supabase.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (isGuestPath) {
-        setIsLoaded(true);
+        const slug = window.location.pathname.match(/^\/w\/([^/]+)/)?.[1];
+        if (slug) {
+          const wedding = await loadWedding(slug);
+          if (wedding && !cancelled) setConfig(adoptConfig(wedding));
+        }
+        if (!cancelled) setIsLoaded(true);
         return;
       }
       if (!authLoaded) return;
