@@ -19,24 +19,23 @@ const SLIDE_MS = 8000; // time each batch is shown
 const FADE_MS = 700;
 
 function PhotoCard({ item, solo }: { item: FeedItem; solo: boolean }) {
-  const imgSide = solo ? "w-[46vh] md:w-[50vh]" : "w-[24vh] md:w-[28vh]";
+  // Stored images are baked Polaroids (portrait ≈ 1111:1290). Size by height;
+  // solo card stays under half the screen height.
+  const cardH = solo ? "h-[34vh] md:h-[38vh]" : "h-[18vh] md:h-[21vh]";
 
   return (
     <div className="flex flex-col items-center gap-3">
-      {/* Framed square photo — one flexbox per photo */}
-      <div className="bg-cream p-2.5 rounded-xl border border-parchment polaroid-shadow">
-        <img
-          src={item.imageUrl}
-          alt="Guest photo"
-          referrerPolicy="no-referrer"
-          className={`${imgSide} aspect-square object-cover rounded-lg`}
-          onError={(e) => {
-            console.error("LiveWall image failed:", item.imageUrl);
-            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-          }}
-        />
-      </div>
-      {/* Note directly underneath the framed image */}
+      <img
+        src={item.imageUrl}
+        alt="Guest photo"
+        referrerPolicy="no-referrer"
+        className={`${cardH} w-auto rounded-xl polaroid-shadow`}
+        onError={(e) => {
+          console.error("LiveWall image failed:", item.imageUrl);
+          (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+        }}
+      />
+      {/* Note directly underneath the Polaroid */}
       {item.transcript && (
         <p className={`${solo ? "max-w-md" : "max-w-[12rem]"} font-script text-xl md:text-2xl text-cream/90 leading-snug text-center break-words px-2`}>
           &ldquo;{item.transcript}&rdquo;

@@ -6,7 +6,7 @@ import {
   processQueue,
 } from "../utils/syncEngine";
 import { getCurrentPhase, getWeddingConfig } from "../config/wedding.config";
-import { formatSquareImage } from "../utils/frameProcessor";
+import { formatPolaroidImage } from "../utils/frameProcessor";
 
 export interface SyncStatus {
   total: number;
@@ -66,7 +66,7 @@ export function usePhotoSync() {
       const cfg = getWeddingConfig();
       const weddingSlug = options?.weddingSlug ?? cfg.slug ?? "";
 
-      const stamped = await formatSquareImage(imageBlob);
+      const stamped = await formatPolaroidImage(imageBlob);
 
       const imageBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
