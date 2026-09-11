@@ -26,8 +26,8 @@ function tiltFor(id: string): number {
 }
 
 function PhotoCard({ item, solo, index }: { item: FeedItem; solo: boolean; index: number }) {
-  // Solo polaroid fills close to the half-screen cap; batches shrink to fit 3 across
-  const cardH = solo ? "h-[46vh] md:h-[48vh]" : "h-[26vh] md:h-[28vh]";
+  // Big, projector-scale polaroids: solo near-full height, batches ~2× the old size
+  const cardH = solo ? "h-[70vh] md:h-[74vh]" : "h-[52vh] md:h-[55vh]";
   const tilt = solo ? 0 : tiltFor(item.fileId || `${index}`);
 
   return (
@@ -47,12 +47,26 @@ function PhotoCard({ item, solo, index }: { item: FeedItem; solo: boolean; index
       />
       {/* Note directly underneath the Polaroid */}
       {item.transcript && (
-        <p className={`${solo ? "max-w-lg text-3xl md:text-4xl" : "max-w-[13rem] text-xl md:text-2xl"} font-script text-cream/90 leading-snug text-center break-words px-2`}>
+        <p className={`${solo ? "max-w-lg text-3xl md:text-4xl" : "max-w-[14rem] text-2xl md:text-3xl"} font-script text-cream/90 leading-snug text-center break-words px-2`}>
           &ldquo;{item.transcript}&rdquo;
         </p>
       )}
     </div>
   );
+}
+
+// Batches of 3 on desktop; one big card per slide on small screens
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isDesktop;
 }
 
 export default function LiveWall() {
@@ -125,18 +139,20 @@ export default function LiveWall() {
     };
   }, [fetchFeed, weddingSlug]);
 
-  // Chunk newest-first feed into batches of up to GROUP_SIZE
+  // Chunk newest-first feed into batches of up to GROUP_SIZE (1 on small screens)
+  const isDesktop = useIsDesktop();
+  const groupSize = isDesktop ? GROUP_SIZE : 1;
   const groups = useMemo(() => {
-    const size = Math.min(GROUP_SIZE, Math.max(1, feed.length));
+    const size = Math.min(groupSize, Math.max(1, feed.length));
     const out: FeedItem[][] = [];
     for (let i = 0; i < feed.length; i += size) out.push(feed.slice(i, i + size));
     return out;
-  }, [feed]);
+  }, [feed, groupSize]);
 
-  // Reset to newest batch when the feed changes
+  // Reset to newest batch when the feed or layout changes
   useEffect(() => {
     setGroupIndex(0);
-  }, [feed.length]);
+  }, [feed.length, isDesktop]);
 
   // Rotate batches
   useEffect(() => {
